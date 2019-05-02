@@ -5,7 +5,7 @@ import tensorflow_datasets as tfds
 
 
 class Dataset:
-    def __init__(self, dataset_name, preprocess_fn, use_val_split, data_dir=None):
+    def __init__(self, dataset_name, preprocess_fn, use_val_split=False, data_dir=None):
         self.dataset_name = dataset_name
         self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
@@ -85,41 +85,26 @@ class Dataset:
 
     def train_data(self, batch_size):
         return (
-            self._train_dataset.apply(
-                tf.data.experimental.shuffle_and_repeat(10 * batch_size)
+            self._train_dataset.shuffle(10 * batch_size)
+            .repeat()
+            .map(
+                functools.partial(self._map_fn, training=True),
+                num_parallel_calls=tf.data.experimental.AUTOTUNE,
             )
-            .apply(
-                tf.data.experimental.map_and_batch(
-                    functools.partial(self._map_fn, training=True),
-                    batch_size,
-                    num_parallel_batches=4,
-                )
-            )
-            .prefetch(8)
+            .batch(batch_size)
+            .prefetch(tf.data.experimental.AUTOTUNE)
         )
 
     def validation_data(self, batch_size):
-        return (
-            self._validation_dataset.repeat()
-            .apply(
-                tf.data.experimental.map_and_batch(
-                    functools.partial(self._map_fn, training=False),
-                    batch_size,
-                    num_parallel_batches=4,
-                )
-            )
-            .prefetch(8)
-        )
+        return self._get_eval_data(self._validation_dataset, batch_size)
 
     def test_data(self, batch_size):
+        return self._get_eval_data(self._test_dataset, batch_size)
+
+    def _get_eval_data(self, dataset, batch_size):
         return (
-            self._test_dataset.repeat()
-            .apply(
-                tf.data.experimental.map_and_batch(
-                    functools.partial(self._map_fn, training=False),
-                    batch_size,
-                    num_parallel_batches=4,
-                )
-            )
-            .prefetch(8)
+            dataset.repeat()
+            .map(self._map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            .batch(batch_size)
+            .prefetch(tf.data.experimental.AUTOTUNE)
         )
