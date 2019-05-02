@@ -120,11 +120,11 @@ def train(
 @click.argument("datasets", type=str, nargs=-1)
 @click.option("--data-dir", type=str, help="Directory with training data.")
 def prepare(datasets, data_dir):
-    from larq_models.data import get_dataset
+    import tensorflow_datasets as tfds
 
     for dataset in datasets:
-        get_dataset(dataset, "default", data_dir)
-        print("Finished preparing dataset:", dataset)
+        tfds.builder(dataset, data_dir=data_dir).download_and_prepare()
+        log.info(f"Finished preparing dataset: {dataset}")
 
 
 if __name__ == "__main__":

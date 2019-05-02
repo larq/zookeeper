@@ -3,7 +3,11 @@ from click.testing import CliRunner
 
 
 def test_cli():
-    result = CliRunner(mix_stderr=False).invoke(
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(cli, ["prepare", "mnist"])
+    assert result.exit_code == 0
+
+    result = runner.invoke(
         cli,
         [
             "train",
