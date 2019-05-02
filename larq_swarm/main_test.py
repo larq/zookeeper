@@ -18,6 +18,8 @@ def test_cli():
             "fixtures",
             "--dataset",
             "mnist",
+            "--hparams",
+            "baz_overwrite=42",
         ],
     )
     assert result.exit_code == 0

@@ -8,4 +8,4 @@ def foo(hparams, dataset):
 
 @register_hparams(foo)
 def bar():
-    return HParams(baz=3)
+    return HParams(baz=3, baz_overwrite=0)

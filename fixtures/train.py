@@ -23,4 +23,5 @@ def train(
     assert model == "foo-model"
     assert dataset.dataset_name == "mnist"
     assert hparams.baz == 3
+    assert hparams.baz_overwrite == 42
     print("TESTS PASSED")
