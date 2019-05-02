@@ -1,2 +1,3 @@
 # larq-swarm
-WIP: Nothing to see here yet
+
+A small library for managing deep learning models, hyper parameters and datasets
