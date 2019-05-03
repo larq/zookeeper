@@ -124,7 +124,23 @@ def prepare(datasets, data_dir):
 
     for dataset in datasets:
         tfds.builder(dataset, data_dir=data_dir).download_and_prepare()
-        log.info(f"Finished preparing dataset: {dataset}")
+        log.info("Finished preparing dataset: %s", dataset)
+
+
+@cli.command(context_settings=dict(allow_extra_args=True, ignore_unknown_options=True))
+@click.argument("model", required=False)
+@click.option("--dataset", default="", help="Tensorflow dataset name.")
+@click.option(
+    "--output-prefix",
+    default=os.path.expanduser("~/larq-swarm-logs"),
+    help="Directory prefix used to save model checkpoints and logs.",
+)
+@click.option("--output-dir", type=str, help="Directory containing model checkpoints.")
+def tensorboard(model, dataset, output_prefix, output_dir):
+    if output_dir is None:
+        output_dir = os.path.join(output_prefix, dataset, model)
+    log.info("Starting TensorBoard at: %s", output_dir)
+    os.system(f"tensorboard --logdir={output_dir}")
 
 
 if __name__ == "__main__":
