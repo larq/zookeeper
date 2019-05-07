@@ -23,10 +23,6 @@ setup(
         "tensorflow_gpu": ["tensorflow-gpu>=1.13.1"],
         "test": ["pytest>=4.3.1", "pytest-cov>=2.6.1"],
     },
-    entry_points="""
-        [console_scripts]
-        lq=larq_swarm.main:cli
-    """,
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
