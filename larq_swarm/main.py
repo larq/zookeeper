@@ -62,11 +62,6 @@ def cli():
     help="If you want to split a dataset which only contains a train/test into train/val/test",
 )
 @click.option(
-    "--validationset/--no-validationset",
-    default=False,
-    help="If you want to split a dataset which only contains a train/test into train/val/test",
-)
-@click.option(
     "--usr-dir",
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     default=os.getcwd(),
