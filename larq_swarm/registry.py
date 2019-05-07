@@ -1,5 +1,5 @@
 import tensorflow_datasets as tfds
-from larq_swarm import Dataset
+from larq_swarm.data import Dataset
 
 MODEL_REGISTRY = {}
 HPARAMS_REGISTRY = {}
