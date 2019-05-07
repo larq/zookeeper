@@ -44,7 +44,7 @@ def build_train(function):
     @click.option("--data-dir", type=str, help="Directory with training data.")
     @click.option(
         "--output-prefix",
-        default=os.path.expanduser("~/larq-swarm-logs"),
+        default=os.path.expanduser("~/larq-flock-logs"),
         help="Directory prefix used to save model checkpoints and logs.",
     )
     @click.option(
@@ -71,7 +71,7 @@ def build_train(function):
         validationset,
         **kwargs,
     ):
-        from larq_swarm import registry
+        from larq_flock import registry
 
         dataset = registry.get_dataset(
             dataset_name, preprocess_fn, validationset, data_dir
@@ -109,7 +109,7 @@ def prepare(datasets, data_dir):
 @click.option("--dataset", default="", help="Tensorflow dataset name.")
 @click.option(
     "--output-prefix",
-    default=os.path.expanduser("~/larq-swarm-logs"),
+    default=os.path.expanduser("~/larq-flock-logs"),
     help="Directory prefix used to save model checkpoints and logs.",
 )
 @click.option(

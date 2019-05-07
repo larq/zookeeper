@@ -7,14 +7,14 @@ def readme():
 
 
 setup(
-    name="larq-swarm",
+    name="larq-flock",
     version="0.1.0",
     author="Plumerai",
     author_email="lukas@plumerai.co.uk",
     description="A small library for managing deep learning models, hyper parameters and datasets",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    url="https://github.com/plumerai/larq-swarm",
+    url="https://github.com/plumerai/larq-flock",
     packages=find_packages(),
     license="Apache 2.0",
     install_requires=["click>=7.0", "tensorflow-datasets>=1.0.1"],

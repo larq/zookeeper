@@ -1,4 +1,4 @@
-from larq_swarm import registry, cli, build_train, HParams, data
+from larq_flock import registry, cli, build_train, HParams, data
 from click.testing import CliRunner
 import click
 
