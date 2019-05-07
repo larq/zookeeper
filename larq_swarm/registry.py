@@ -1,8 +1,7 @@
 import tensorflow_datasets as tfds
-from larq_swarm import Dataset
+from larq_swarm.data import Dataset
 
 MODEL_REGISTRY = {}
-TRAIN_REGISTRY = {}
 HPARAMS_REGISTRY = {}
 DATA_REGISTRY = {dataset: {} for dataset in tfds.list_builders()}
 
@@ -27,13 +26,6 @@ class ModelNotFoundError(ValueError):
     def __init__(self, name):
         available_models = "\n\t- ".join([""] + list(MODEL_REGISTRY.keys()))
         err = f"No model named {name} registered.\nAvailable models:{available_models}"
-        ValueError.__init__(self, err)
-
-
-class TrainNotFoundError(ValueError):
-    def __init__(self, name):
-        available_fns = "\n\t- ".join([""] + list(TRAIN_REGISTRY.keys()))
-        err = f"No train function named {name} registered.\nAvailable train functions:{available_fns}"
         ValueError.__init__(self, err)
 
 
@@ -66,16 +58,6 @@ def register_preprocess(dataset_name, image_shape=None):
         return fn
 
     return register_preprocess_fn
-
-
-def register_train_function(train_fn):
-    if not callable(train_fn):
-        raise ValueError("Train function must be callable")
-    name = train_fn.__name__
-    if name in TRAIN_REGISTRY:
-        raise ValueError(f"Cannot register duplicate train function ({name})")
-    TRAIN_REGISTRY[name] = train_fn
-    return train_fn
 
 
 def register_model(model):
@@ -118,16 +100,10 @@ def get_dataset(dataset_name, preprocess_name, use_val_split, data_dir=None):
     )
 
 
-def get_train_function(name):
-    if name in TRAIN_REGISTRY:
-        return TRAIN_REGISTRY[name]
-    raise TrainNotFoundError(name)
-
-
 def get_model_function(name):
     if name in MODEL_REGISTRY:
         return MODEL_REGISTRY[name]
-    raise TrainNotFoundError(name)
+    raise ModelNotFoundError(name)
 
 
 def get_hparams(model_name, name):
