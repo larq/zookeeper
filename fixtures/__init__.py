@@ -1,26 +1,18 @@
 import click
-from larq_swarm import (
-    register_model,
-    register_hparams,
-    register_preprocess,
-    cli,
-    build_train,
-    HParams,
-    Dataset,
-)
+from larq_swarm import registry, cli, build_train, HParams, data
 
 
-@register_preprocess("mnist")
+@registry.register_preprocess("mnist")
 def default(image):
     return image
 
 
-@register_model
+@registry.register_model
 def foo(hparams, dataset):
     return "foo-model"
 
 
-@register_hparams(foo)
+@registry.register_hparams(foo)
 def bar():
     return HParams(baz=3, baz_overwrite=0)
 
@@ -30,7 +22,7 @@ def bar():
 @build_train
 def train(build_model, dataset, hparams, output_dir, epochs, custom_opt):
     assert isinstance(hparams, HParams)
-    assert isinstance(dataset, Dataset)
+    assert isinstance(dataset, data.Dataset)
     assert isinstance(output_dir, str)
     assert isinstance(epochs, int)
     assert isinstance(custom_opt, str)
