@@ -1,7 +1,7 @@
 # Forked from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/training/python/training/hparam_test.py
 """Tests for hparam."""
 import pytest
-from larq_swarm import hparam
+from larq_flock import hparam
 
 
 def test_empty():
