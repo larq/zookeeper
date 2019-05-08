@@ -78,6 +78,7 @@ def build_train(function):
         hparams = registry.get_hparams(model_name, hparams_set)
         if hparams_str:
             hparams.parse(hparams_str)
+        click.echo(hparams)
 
         if output_dir is None:
             time_stamp = datetime.now().strftime("%Y%m%d_%H%M")

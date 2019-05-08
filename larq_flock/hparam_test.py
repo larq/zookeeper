@@ -1,6 +1,7 @@
 # Forked from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/training/python/training/hparam_test.py
 """Tests for hparam."""
 import pytest
+import click
 from larq_flock import hparam
 
 
@@ -22,9 +23,9 @@ def test_contains():
 def test_some_values():
     hparams = hparam.HParams(aaa=1, b=2.0, c_c="relu6", d="/a/b=c/d")
     assert {"aaa": 1, "b": 2.0, "c_c": "relu6", "d": "/a/b=c/d"} == hparams.values()
-    expected_str = "[('aaa', 1), ('b', 2.0), ('c_c', 'relu6'), " "('d', '/a/b=c/d')]"
-    assert expected_str == str(hparams.__str__())
-    assert expected_str == str(hparams)
+    expected_str = "HParams(aaa=1,\n\tb=2.0,\n\tc_c=relu6,\n\td=/a/b=c/d)"
+    assert expected_str == click.unstyle(str(hparams.__str__()))
+    assert expected_str == click.unstyle(str(hparams))
     assert 1 == hparams.aaa
     assert 2.0 == hparams.b
     assert "relu6" == hparams.c_c

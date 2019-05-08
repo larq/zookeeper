@@ -3,6 +3,8 @@
 import json
 import numbers
 import re
+from colorama import Fore
+
 
 # Define the regular expression for parsing a single clause of the input
 # (delimited by commas).  A legal clause looks like:
@@ -592,7 +594,13 @@ class HParams:
         return key in self._hparam_types
 
     def __str__(self):
-        return str(sorted(self.values().items()))
+        params = ",\n\t".join(
+            [
+                f"{Fore.BLUE}{k}{Fore.RESET}={Fore.YELLOW}{v}{Fore.RESET}"
+                for k, v in sorted(self.values().items())
+            ]
+        )
+        return f"{type(self).__name__}({params})"
 
     def __repr__(self):
-        return "%s(%s)" % (type(self).__name__, self.__str__())
+        return self.__str__()

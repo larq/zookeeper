@@ -68,7 +68,7 @@ def test_cli():
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "TESTS PASSED\n"
+    assert result.output.splitlines()[-1] == "TESTS PASSED"
 
 
 def test_cli_wrong_data():
