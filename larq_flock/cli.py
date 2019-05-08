@@ -102,21 +102,23 @@ def prepare(datasets, data_dir):
 
 @cli.command(context_settings=dict(allow_extra_args=True, ignore_unknown_options=True))
 @click.argument("model", required=False)
-@click.option("--dataset", default="", help="Tensorflow dataset name.")
+@click.option("--dataset", help="Tensorflow dataset name.")
 @click.option(
     "--output-prefix",
     default=os.path.expanduser("~/larq-flock-logs"),
     help="Directory prefix used to save model checkpoints and logs.",
 )
-@click.option(
-    "--output-dir", "--logdir", type=str, help="Directory containing model checkpoints."
-)
+@click.option("--output-dir", "--logdir", help="Directory containing checkpoints.")
 def tensorboard(model, dataset, output_prefix, output_dir):
     if output_dir is None:
-        output_dir = os.path.join(output_prefix, dataset, model)
+        output_dir = output_prefix
+        if dataset:
+            output_dir = os.path.join(output_dir, dataset)
+            if model:
+                output_dir = os.path.join(output_dir, model)
     click.secho(f"Starting TensorBoard at: {output_dir}", fg="blue")
     os.system(f"tensorboard --logdir={output_dir}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     cli()
