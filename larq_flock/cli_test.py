@@ -39,6 +39,12 @@ def train(build_model, dataset, hparams, output_dir, epochs, custom_opt):
     print("TESTS PASSED")
 
 
+@cli.command()
+@build_train
+def train_fail(build_model, dataset, hparams, output_dir, epochs):
+    pass
+
+
 runner = CliRunner(mix_stderr=False)
 
 
@@ -63,6 +69,48 @@ def test_cli():
     )
     assert result.exit_code == 0
     assert result.output == "TESTS PASSED\n"
+
+
+def test_cli_wrong_data():
+    result = runner.invoke(
+        cli, ["train-fail", "foo", "--hparams-set", "bar", "--dataset", "raise-error"]
+    )
+    assert result.exit_code == 1
+    assert isinstance(result.exception, registry.DatasetNotFoundError)
+
+
+def test_cli_wrong_prepro():
+    result = runner.invoke(
+        cli,
+        [
+            "train-fail",
+            "foo",
+            "--hparams-set",
+            "bar",
+            "--dataset",
+            "mnist",
+            "--preprocess-fn",
+            "raise-error",
+        ],
+    )
+    assert result.exit_code == 1
+    assert isinstance(result.exception, registry.PreprocessNotFoundError)
+
+
+def test_cli_wrong_model():
+    result = runner.invoke(
+        cli, ["train-fail", "raise-error", "--hparams-set", "bar", "--dataset", "mnist"]
+    )
+    assert result.exit_code == 1
+    assert isinstance(result.exception, registry.ModelNotFoundError)
+
+
+def test_cli_wrong_hparams():
+    result = runner.invoke(
+        cli, ["train-fail", "foo", "--hparams-set", "raise-error", "--dataset", "mnist"]
+    )
+    assert result.exit_code == 1
+    assert isinstance(result.exception, registry.HParamsNotFoundError)
 
 
 @mock.patch("os.system")
