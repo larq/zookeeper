@@ -1,10 +1,6 @@
 import click
 import os
 from datetime import datetime
-import logging
-
-log = logging.getLogger(name=__name__)
-log.setLevel(logging.INFO)
 
 
 @click.group()
@@ -101,7 +97,7 @@ def prepare(datasets, data_dir):
 
     for dataset in datasets:
         tfds.builder(dataset, data_dir=data_dir).download_and_prepare()
-        log.info("Finished preparing dataset: %s", dataset)
+        click.secho(f"Finished preparing dataset: {dataset}", fg="green")
 
 
 @cli.command(context_settings=dict(allow_extra_args=True, ignore_unknown_options=True))
@@ -118,7 +114,7 @@ def prepare(datasets, data_dir):
 def tensorboard(model, dataset, output_prefix, output_dir):
     if output_dir is None:
         output_dir = os.path.join(output_prefix, dataset, model)
-    log.info("Starting TensorBoard at: %s", output_dir)
+    click.secho(f"Starting TensorBoard at: {output_dir}", fg="blue")
     os.system(f"tensorboard --logdir={output_dir}")
 
 
