@@ -40,7 +40,7 @@ class HParamsNotFoundError(ValueError):
         ValueError.__init__(self, err)
 
 
-def register_preprocess(dataset_name, image_shape=None):
+def register_preprocess(dataset_name, input_shape=None):
     def register_preprocess_fn(fn):
         if not callable(fn):
             raise ValueError("Preprocess function must be callable")
@@ -52,8 +52,8 @@ def register_preprocess(dataset_name, image_shape=None):
             raise ValueError(
                 f"Cannot register duplicate preprocessing ({name}) for dataset ({dataset_name})"
             )
-        if image_shape:
-            setattr(fn, "image_shape", image_shape)
+        if input_shape:
+            setattr(fn, "input_shape", input_shape)
         data_preprocess_fns[name] = fn
         return fn
 
