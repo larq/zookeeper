@@ -1,6 +1,7 @@
 import click
 import os
 from datetime import datetime
+from functools import wraps
 
 
 @click.group()
@@ -54,6 +55,7 @@ def build_train(function):
         default=False,
         help="If you want to split a dataset which only contains a train/test into train/val/test",
     )
+    @wraps(function)
     def train(
         model_name,
         dataset_name,
@@ -72,11 +74,10 @@ def build_train(function):
         dataset = registry.get_dataset(
             dataset_name, preprocess_fn, validationset, data_dir
         )
+        build_model = registry.get_model_function(model_name)
         hparams = registry.get_hparams(model_name, hparams_set)
         if hparams_str:
             hparams.parse(hparams_str)
-
-        build_model = registry.get_model_function(model_name)
 
         if output_dir is None:
             time_stamp = datetime.now().strftime("%Y%m%d_%H%M")
