@@ -71,8 +71,8 @@ class Dataset:
             )
 
         self.num_classes = info.features["label"].num_classes
-        self.image_shape = getattr(
-            preprocess_fn, "image_shape", info.features["image"].shape
+        self.input_shape = getattr(
+            preprocess_fn, "input_shape", info.features["image"].shape
         )
 
     def _map_fn(self, data, training=False):
