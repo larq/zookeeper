@@ -30,9 +30,15 @@ class Dataset:
             preprocess_fn, "input_shape", info.features["image"].shape
         )
 
-        if tfds.Split.VALIDATION not in splits and tfds.Split.TEST in splits:
+        self.train_split = tfds.Split.TRAIN
+        self.train_examples = splits[self.train_split].num_examples
+        if tfds.Split.TEST in splits:
             self.test_split = tfds.Split.TEST
             self.test_examples = splits[self.test_split].num_examples
+        if tfds.Split.VALIDATION in splits:
+            self.validation_split = tfds.Split.VALIDATION
+            self.validation_examples = splits[self.validation_split].num_examples
+        else:
             if use_val_split == True:
                 self.train_split = tfds.Split.TRAIN.subsplit(tfds.percent[:90])
                 all_train_examples = splits[tfds.Split.TRAIN].num_examples
@@ -40,24 +46,8 @@ class Dataset:
                 self.validation_split = tfds.Split.TRAIN.subsplit(tfds.percent[-10:])
                 self.validation_examples = all_train_examples - self.train_examples
             else:
-                self.train_split = tfds.Split.TRAIN
-                self.train_examples = splits[self.train_split].num_examples
                 self.validation_split = self.test_split
                 self.validation_examples = self.test_examples
-        elif tfds.Split.VALIDATION in splits and tfds.Split.TEST not in splits:
-            self.train_split = tfds.Split.TRAIN
-            self.train_examples = splits[self.train_split].num_examples
-            self.validation_split = tfds.Split.VALIDATION
-            self.validation_examples = splits[self.validation_split].num_examples
-            self.test_split = self.validation_split
-            self.test_examples = self.validation_examples
-        else:
-            self.train_split = tfds.Split.TRAIN
-            self.train_examples = splits[self.train_split].num_examples
-            self.validation_split = tfds.Split.VALIDATION
-            self.validation_examples = splits[self.validation_split].num_examples
-            self.test_split = tfds.Split.TEST
-            self.test_examples = splits[self.test_split].num_examples
 
     def _get_dataset(self, split):
         return tfds.load(name=self.dataset_name, split=split, data_dir=self.data_dir)
