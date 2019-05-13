@@ -5,31 +5,23 @@ import tensorflow_datasets as tfds
 
 
 class Dataset:
-    def __init__(self, dataset_name, preprocess_fn, use_val_split=False, data_dir=None):
+    def __init__(self, dataset_name, prepro_fn, use_val_split=False, data_dir=None):
         self.dataset_name = dataset_name
-        self.preprocess_fn = preprocess_fn
+        self.preprocess_fn = prepro_fn
         self.data_dir = data_dir
 
         dataset_builder = tfds.builder(dataset_name)
-        info = dataset_builder.info
         splits = dataset_builder.info.splits
+        features = dataset_builder.info.features
         if tfds.Split.TRAIN not in splits:
             raise ValueError("To train we require a train split in the dataset.")
         if tfds.Split.TEST not in splits and tfds.Split.VALIDATION not in splits:
             raise ValueError("We require a test or validation split in the dataset.")
-        if (
-            not info.supervised_keys
-            or "image" not in info.supervised_keys
-            or "label" not in info.supervised_keys
-        ):
-            raise NotImplementedError(
-                "We currently only support supervised image classification"
-            )
-        self.num_classes = info.features["label"].num_classes
-        self.input_shape = getattr(
-            preprocess_fn, "input_shape", info.features["image"].shape
-        )
+        if not {"image", "label"} <= set(dataset_builder.info.supervised_keys or []):
+            raise NotImplementedError("We currently only support image classification")
 
+        self.num_classes = features["label"].num_classes
+        self.input_shape = getattr(prepro_fn, "input_shape", features["image"].shape)
         self.train_split = tfds.Split.TRAIN
         self.train_examples = splits[self.train_split].num_examples
         if tfds.Split.TEST in splits:
@@ -49,7 +41,7 @@ class Dataset:
                 self.validation_split = self.test_split
                 self.validation_examples = self.test_examples
 
-    def _get_dataset(self, split):
+    def _load_split(self, split):
         return tfds.load(name=self.dataset_name, split=split, data_dir=self.data_dir)
 
     def _map_fn(self, data, training=False):
@@ -62,7 +54,7 @@ class Dataset:
 
     def train_data(self, batch_size):
         return (
-            self._get_dataset(self.train_split)
+            self._load_split(self.train_split)
             .shuffle(10 * batch_size)
             .repeat()
             .map(
@@ -74,10 +66,10 @@ class Dataset:
         )
 
     def validation_data(self, batch_size):
-        return self._get_eval_data(self._get_dataset(self.validation_split), batch_size)
+        return self._get_eval_data(self._load_split(self.validation_split), batch_size)
 
     def test_data(self, batch_size):
-        return self._get_eval_data(self._get_dataset(self.test_split), batch_size)
+        return self._get_eval_data(self._load_split(self.test_split), batch_size)
 
     def _get_eval_data(self, dataset, batch_size):
         return (
