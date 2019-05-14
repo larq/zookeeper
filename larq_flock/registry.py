@@ -96,7 +96,10 @@ def get_dataset(dataset_name, preprocess_name, use_val_split, data_dir=None):
     if preprocess_name not in preprocess_registry:
         raise PreprocessNotFoundError(dataset_name, preprocess_name)
     return Dataset(
-        dataset_name, preprocess_registry[preprocess_name], use_val_split, data_dir
+        dataset_name,
+        preprocess_registry[preprocess_name],
+        use_val_split=use_val_split,
+        data_dir=data_dir,
     )
 
 

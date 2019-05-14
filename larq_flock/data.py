@@ -11,69 +11,40 @@ class Dataset:
         self.data_dir = data_dir
 
         dataset_builder = tfds.builder(dataset_name)
-        info = dataset_builder.info
         splits = dataset_builder.info.splits
+        features = dataset_builder.info.features
         if tfds.Split.TRAIN not in splits:
             raise ValueError("To train we require a train split in the dataset.")
         if tfds.Split.TEST not in splits and tfds.Split.VALIDATION not in splits:
             raise ValueError("We require a test or validation split in the dataset.")
-        if (
-            not info.supervised_keys
-            or "image" not in info.supervised_keys
-            or "label" not in info.supervised_keys
-        ):
-            raise ValueError(
-                "We currently only support supervised image classification"
-            )
+        if not {"image", "label"} <= set(dataset_builder.info.supervised_keys or []):
+            raise NotImplementedError("We currently only support image classification")
 
-        if tfds.Split.VALIDATION not in splits and tfds.Split.TEST in splits:
-            self.test_examples = splits[tfds.Split.TEST].num_examples
-            if use_val_split == True:
-                train_set = tfds.Split.TRAIN.subsplit(tfds.percent[:90])
-                val_set = tfds.Split.TRAIN.subsplit(tfds.percent[-10:])
-                self.train_examples = int(splits[tfds.Split.TRAIN].num_examples * 0.9)
-                self.validation_examples = (
-                    splits[tfds.Split.TRAIN].num_examples - self.train_examples
-                )
-                self._train_dataset, self._validation_dataset, self._test_dataset = tfds.load(
-                    name=dataset_name,
-                    split=[train_set, val_set, tfds.Split.TEST],
-                    data_dir=data_dir,
-                )
-
-            else:
-                self.train_examples = splits[tfds.Split.TRAIN].num_examples
-                self.validation_examples = self.test_examples
-                self._train_dataset, self._test_dataset = tfds.load(
-                    name=dataset_name,
-                    split=[tfds.Split.TRAIN, tfds.Split.TEST],
-                    data_dir=data_dir,
-                )
-                self._validation_dataset = self._test_dataset
-        elif tfds.Split.VALIDATION in splits and tfds.Split.TEST not in splits:
-            self.train_examples = splits[tfds.Split.TRAIN].num_examples
-            self.validation_examples = splits[tfds.Split.VALIDATION].num_examples
-            self.test_examples = self.validation_examples
-            self._train_dataset, self._validation_dataset = tfds.load(
-                name=dataset_name,
-                split=[tfds.Split.TRAIN, tfds.Split.VALIDATION],
-                data_dir=data_dir,
-            )
-            self._test_dataset = self._validation_dataset
-        else:
-            self.train_examples = splits[tfds.Split.TRAIN].num_examples
-            self.validation_examples = splits[tfds.Split.VALIDATION].num_examples
-            self.test_examples = splits[tfds.Split.TEST].num_examples
-            self._train_dataset, self._validation_dataset, self._test_dataset = tfds.load(
-                name=dataset_name,
-                split=[tfds.Split.TRAIN, tfds.Split.VALIDATION, tfds.Split.TEST],
-                data_dir=data_dir,
-            )
-
-        self.num_classes = info.features["label"].num_classes
+        self.num_classes = features["label"].num_classes
         self.input_shape = getattr(
-            preprocess_fn, "input_shape", info.features["image"].shape
+            preprocess_fn, "input_shape", features["image"].shape
         )
+        self.train_split = tfds.Split.TRAIN
+        self.train_examples = splits[self.train_split].num_examples
+        if tfds.Split.TEST in splits:
+            self.test_split = tfds.Split.TEST
+            self.test_examples = splits[self.test_split].num_examples
+        if tfds.Split.VALIDATION in splits:
+            self.validation_split = tfds.Split.VALIDATION
+            self.validation_examples = splits[self.validation_split].num_examples
+        else:
+            if use_val_split == True:
+                self.train_split = tfds.Split.TRAIN.subsplit(tfds.percent[:90])
+                all_train_examples = splits[tfds.Split.TRAIN].num_examples
+                self.train_examples = int(all_train_examples * 0.9)
+                self.validation_split = tfds.Split.TRAIN.subsplit(tfds.percent[-10:])
+                self.validation_examples = all_train_examples - self.train_examples
+            else:
+                self.validation_split = self.test_split
+                self.validation_examples = self.test_examples
+
+    def _load_split(self, split):
+        return tfds.load(name=self.dataset_name, split=split, data_dir=self.data_dir)
 
     def _map_fn(self, data, training=False):
         if "training" in inspect.getfullargspec(self.preprocess_fn).args:
@@ -85,7 +56,8 @@ class Dataset:
 
     def train_data(self, batch_size):
         return (
-            self._train_dataset.shuffle(10 * batch_size)
+            self._load_split(self.train_split)
+            .shuffle(10 * batch_size)
             .repeat()
             .map(
                 functools.partial(self._map_fn, training=True),
@@ -96,10 +68,10 @@ class Dataset:
         )
 
     def validation_data(self, batch_size):
-        return self._get_eval_data(self._validation_dataset, batch_size)
+        return self._get_eval_data(self._load_split(self.validation_split), batch_size)
 
     def test_data(self, batch_size):
-        return self._get_eval_data(self._test_dataset, batch_size)
+        return self._get_eval_data(self._load_split(self.test_split), batch_size)
 
     def _get_eval_data(self, dataset, batch_size):
         return (
