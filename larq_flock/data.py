@@ -5,9 +5,9 @@ import tensorflow_datasets as tfds
 
 
 class Dataset:
-    def __init__(self, dataset_name, prepro_fn, use_val_split=False, data_dir=None):
+    def __init__(self, dataset_name, preprocess_fn, use_val_split=False, data_dir=None):
         self.dataset_name = dataset_name
-        self.preprocess_fn = prepro_fn
+        self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
 
         dataset_builder = tfds.builder(dataset_name)
@@ -21,7 +21,9 @@ class Dataset:
             raise NotImplementedError("We currently only support image classification")
 
         self.num_classes = features["label"].num_classes
-        self.input_shape = getattr(prepro_fn, "input_shape", features["image"].shape)
+        self.input_shape = getattr(
+            preprocess_fn, "input_shape", features["image"].shape
+        )
         self.train_split = tfds.Split.TRAIN
         self.train_examples = splits[self.train_split].num_examples
         if tfds.Split.TEST in splits:
