@@ -65,7 +65,7 @@ def train_fail(build_model, dataset, hparams, output_dir, epochs):
 runner = CliRunner(mix_stderr=False)
 
 
-def test_cli():
+def test_cli(tmp_path):
     result = runner.invoke(cli, ["prepare", "mnist"])
     assert result.exit_code == 0
 
@@ -101,6 +101,11 @@ def test_cli():
     )
     assert result.exit_code == 0
     assert result.output.splitlines()[-1] == "TESTS PASSED"
+
+    result = runner.invoke(cli, ["plot", "mnist", "--output-prefix", tmp_path])
+    output_path = tmp_path / "mnist" / "default"
+    assert result.exit_code == 0
+    assert len(list(output_path.iterdir())) == 3
 
 
 def test_cli_wrong_data():

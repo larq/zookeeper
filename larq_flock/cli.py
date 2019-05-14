@@ -1,5 +1,6 @@
 import click
 import os
+from pathlib import Path
 from datetime import datetime
 from functools import wraps
 
@@ -120,6 +121,32 @@ def tensorboard(model, dataset, output_prefix, output_dir):
                 output_dir = os.path.join(output_dir, model)
     click.secho(f"Starting TensorBoard at: {output_dir}", fg="blue")
     os.system(f"tensorboard --logdir={output_dir}")
+
+
+@cli.command()
+@click.argument("dataset", type=str)
+@click.option(
+    "--preprocess-fn", default="default", help="Function used to preprocess dataset."
+)
+@click.option("--data-dir", type=str, help="Directory with training data.")
+@click.option(
+    "--output-prefix",
+    default=os.path.join(os.path.expanduser("~/larq-flock-logs"), "plots"),
+    help="Directory prefix used to save plots",
+)
+@click.option(
+    "--format", default="pdf", type=click.Choice(["png", "pdf", "ps", "eps", "svg"])
+)
+def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
+    from larq_flock import registry, data_vis
+
+    output_dir = Path(output_prefix).joinpath(dataset, preprocess_fn)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    set = registry.get_dataset(dataset, preprocess_fn, data_dir=data_dir)
+    figs = data_vis.plot_all_examples(set.load_split(set.train_split), set.map_fn)
+    for fig, filename in zip(figs, ("raw", "train", "eval")):
+        fig.savefig(output_dir.joinpath(filename).absolute(), format=format)
 
 
 if __name__ == "__main__":  # pragma: no cover
