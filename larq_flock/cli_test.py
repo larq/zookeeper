@@ -33,9 +33,26 @@ def train(build_model, dataset, hparams, output_dir, epochs, custom_opt):
     model = build_model(hparams, dataset)
     assert model == "foo-model"
     assert dataset.dataset_name == "mnist"
+    assert dataset.train_examples == 60000
     assert hparams.baz == 3
     assert hparams.baz_overwrite == 42
     assert custom_opt == "passed"
+    print("TESTS PASSED")
+
+
+@cli.command()
+@build_train
+def train_val(build_model, dataset, hparams, output_dir, epochs):
+    assert isinstance(hparams, HParams)
+    assert isinstance(dataset, data.Dataset)
+    assert isinstance(output_dir, str)
+    assert isinstance(epochs, int)
+
+    model = build_model(hparams, dataset)
+    assert model == "foo-model"
+    assert dataset.dataset_name == "mnist"
+    assert dataset.train_examples == 54000
+    assert hparams.baz == 3
     print("TESTS PASSED")
 
 
@@ -65,6 +82,21 @@ def test_cli():
             "baz_overwrite=42",
             "--custom-opt",
             "passed",
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.output.splitlines()[-1] == "TESTS PASSED"
+
+    result = runner.invoke(
+        cli,
+        [
+            "train-val",
+            "foo",
+            "--hparams-set",
+            "bar",
+            "--dataset",
+            "mnist",
+            "--validationset",
         ],
     )
     assert result.exit_code == 0
