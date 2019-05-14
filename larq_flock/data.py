@@ -43,10 +43,10 @@ class Dataset:
                 self.validation_split = self.test_split
                 self.validation_examples = self.test_examples
 
-    def _load_split(self, split):
+    def load_split(self, split):
         return tfds.load(name=self.dataset_name, split=split, data_dir=self.data_dir)
 
-    def _map_fn(self, data, training=False):
+    def map_fn(self, data, training=False):
         if "training" in inspect.getfullargspec(self.preprocess_fn).args:
             image = self.preprocess_fn(data["image"], training=training)
         else:
@@ -56,11 +56,11 @@ class Dataset:
 
     def train_data(self, batch_size):
         return (
-            self._load_split(self.train_split)
+            self.load_split(self.train_split)
             .shuffle(10 * batch_size)
             .repeat()
             .map(
-                functools.partial(self._map_fn, training=True),
+                functools.partial(self.map_fn, training=True),
                 num_parallel_calls=tf.data.experimental.AUTOTUNE,
             )
             .batch(batch_size)
@@ -68,15 +68,15 @@ class Dataset:
         )
 
     def validation_data(self, batch_size):
-        return self._get_eval_data(self._load_split(self.validation_split), batch_size)
+        return self._get_eval_data(self.load_split(self.validation_split), batch_size)
 
     def test_data(self, batch_size):
-        return self._get_eval_data(self._load_split(self.test_split), batch_size)
+        return self._get_eval_data(self.load_split(self.test_split), batch_size)
 
     def _get_eval_data(self, dataset, batch_size):
         return (
             dataset.repeat()
-            .map(self._map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            .map(self.map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .batch(batch_size)
             .prefetch(tf.data.experimental.AUTOTUNE)
         )
