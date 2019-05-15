@@ -18,7 +18,11 @@ class PreprocessNotFoundError(ValueError):
         available_prepro_fns = "\n\t- ".join(
             [""] + list(DATA_REGISTRY[dataset_name].keys())
         )
-        err = f"No preprocessing named {name} registered for dataset {dataset_name}.\nAvailable preprocessing functions:{available_prepro_fns}"
+        err = (
+            f"No preprocessing named {name} registered for dataset {dataset_name}.\nAvailable preprocessing functions:{available_prepro_fns}"
+            if available_prepro_fns
+            else f"No preprocessing functions registered for dataset {dataset_name}."
+        )
         ValueError.__init__(self, err)
 
 
@@ -88,7 +92,7 @@ def register_hparams(model):
     return register_hparams_fn
 
 
-def get_dataset(dataset_name, preprocess_name, use_val_split, data_dir=None):
+def get_dataset(dataset_name, preprocess_name, use_val_split=False, data_dir=None):
     if dataset_name not in DATA_REGISTRY:
         raise DatasetNotFoundError(dataset_name)
 
