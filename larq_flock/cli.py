@@ -76,13 +76,13 @@ def build_train(function):
         validationset,
         **kwargs,
     ):
-        from larq_flock import utils, registry
+        from larq_flock import registry
 
         dataset = registry.get_dataset(
             dataset_name,
             preprocess_fn,
             use_val_split=validationset,
-            cache_dir=utils.get_cache_dir(data_cache, dataset_name),
+            cache_dir=data_cache,
             data_dir=data_dir,
         )
         build_model = registry.get_model_function(model_name)

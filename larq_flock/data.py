@@ -1,4 +1,5 @@
 import functools
+import glob
 import inspect
 import os
 import tensorflow as tf
@@ -63,15 +64,36 @@ class Dataset:
         label = tf.one_hot(data["label"], self.num_classes)
         return image, label
 
-    def get_cache_path(self, name):
-        return os.path.join(self.cache_dir, name) if self.cache_dir else self.cache_dir
+    def get_cache_path(self, split_name):
+        if self.cache_dir is None:
+            return None
+        if self.cache_dir == "memory":
+            return ""
+        # We need to check for trailing lockfiles here:
+        # https://github.com/tensorflow/tensorflow/issues/28798
+        for i in range(3):
+            cache_dir = os.path.join(
+                self.cache_dir,
+                self.dataset_name if i == 0 else f"{self.dataset_name}_{i}",
+            )
+            if not glob.glob(f"{cache_dir}/*.lockfile"):
+                os.makedirs(cache_dir, exist_ok=True)
+                return os.path.join(cache_dir, split_name)
+        raise RuntimeError(
+            f"Out of retries! Cache lockfile already exists ({cache_dir}). "
+            "If you are sure no other running TF computations are using this cache prefix, "
+            "delete the lockfile and restart training."
+        )
+
+    def maybe_cache(self, dataset, split_name):
+        if self.cache_dir is None:
+            return dataset
+        return dataset.cache(self.get_cache_path(split_name))
 
     def train_data(self, batch_size):
-        dataset = self.load_split(self.train_split)
-        if self.cache_dir is not None:
-            dataset = dataset.cache(self.get_cache_path("train"))
         return (
-            dataset.shuffle(10 * batch_size)
+            self.maybe_cache(self.load_split(self.train_split), "train")
+            .shuffle(10 * batch_size)
             .repeat()
             .map(
                 functools.partial(self.map_fn, training=True),
@@ -82,15 +104,11 @@ class Dataset:
         )
 
     def validation_data(self, batch_size):
-        dataset = self.load_split(self.validation_split)
-        if self.cache_dir is not None:
-            dataset = dataset.cache(self.get_cache_path("eval"))
+        dataset = self.maybe_cache(self.load_split(self.validation_split), "eval")
         return self._get_eval_data(dataset, batch_size)
 
     def test_data(self, batch_size):
-        dataset = self.load_split(self.test_split)
-        if self.cache_dir is not None:
-            dataset = dataset.cache(self.get_cache_path("test"))
+        dataset = self.maybe_cache(self.load_split(self.test_split), "test")
         return self._get_eval_data(dataset, batch_size)
 
     def _get_eval_data(self, dataset, batch_size):
