@@ -1,14 +1,23 @@
 import functools
 import inspect
+import os
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
 class Dataset:
-    def __init__(self, dataset_name, preprocess_fn, use_val_split=False, data_dir=None):
+    def __init__(
+        self,
+        dataset_name,
+        preprocess_fn,
+        use_val_split=False,
+        cache_dir=None,
+        data_dir=None,
+    ):
         self.dataset_name = dataset_name
         self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
+        self.cache_dir = cache_dir
 
         dataset_builder = tfds.builder(dataset_name)
         splits = dataset_builder.info.splits
@@ -54,10 +63,15 @@ class Dataset:
         label = tf.one_hot(data["label"], self.num_classes)
         return image, label
 
+    def get_cache_path(self, name):
+        return os.path.join(self.cache_dir, name) if self.cache_dir else self.cache_dir
+
     def train_data(self, batch_size):
+        dataset = self.load_split(self.train_split)
+        if self.cache_dir is not None:
+            dataset = dataset.cache(self.get_cache_path("train"))
         return (
-            self.load_split(self.train_split)
-            .shuffle(10 * batch_size)
+            dataset.shuffle(10 * batch_size)
             .repeat()
             .map(
                 functools.partial(self.map_fn, training=True),
@@ -68,10 +82,16 @@ class Dataset:
         )
 
     def validation_data(self, batch_size):
-        return self._get_eval_data(self.load_split(self.validation_split), batch_size)
+        dataset = self.load_split(self.validation_split)
+        if self.cache_dir is not None:
+            dataset = dataset.cache(self.get_cache_path("eval"))
+        return self._get_eval_data(dataset, batch_size)
 
     def test_data(self, batch_size):
-        return self._get_eval_data(self.load_split(self.test_split), batch_size)
+        dataset = self.load_split(self.test_split)
+        if self.cache_dir is not None:
+            dataset = dataset.cache(self.get_cache_path("test"))
+        return self._get_eval_data(dataset, batch_size)
 
     def _get_eval_data(self, dataset, batch_size):
         return (
