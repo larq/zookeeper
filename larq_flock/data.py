@@ -1,14 +1,24 @@
 import functools
+import glob
 import inspect
+import os
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
 class Dataset:
-    def __init__(self, dataset_name, preprocess_fn, use_val_split=False, data_dir=None):
+    def __init__(
+        self,
+        dataset_name,
+        preprocess_fn,
+        use_val_split=False,
+        cache_dir=None,
+        data_dir=None,
+    ):
         self.dataset_name = dataset_name
         self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
+        self.cache_dir = cache_dir
 
         dataset_builder = tfds.builder(dataset_name)
         splits = dataset_builder.info.splits
@@ -54,9 +64,35 @@ class Dataset:
         label = tf.one_hot(data["label"], self.num_classes)
         return image, label
 
+    def get_cache_path(self, split_name):
+        if self.cache_dir is None:
+            return None
+        if self.cache_dir == "memory":
+            return ""
+        # We need to check for trailing lockfiles here:
+        # https://github.com/tensorflow/tensorflow/issues/28798
+        for i in range(3):
+            cache_dir = os.path.join(
+                self.cache_dir,
+                self.dataset_name if i == 0 else f"{self.dataset_name}_{i}",
+            )
+            if not glob.glob(f"{cache_dir}/*.lockfile"):
+                os.makedirs(cache_dir, exist_ok=True)
+                return os.path.join(cache_dir, split_name)
+        raise RuntimeError(
+            f"Out of retries! Cache lockfile already exists ({cache_dir}). "
+            "If you are sure no other running TF computations are using this cache prefix, "
+            "delete the lockfile and restart training."
+        )
+
+    def maybe_cache(self, dataset, split_name):
+        if self.cache_dir is None:
+            return dataset
+        return dataset.cache(self.get_cache_path(split_name))
+
     def train_data(self, batch_size):
         return (
-            self.load_split(self.train_split)
+            self.maybe_cache(self.load_split(self.train_split), "train")
             .shuffle(10 * batch_size)
             .repeat()
             .map(
@@ -68,10 +104,12 @@ class Dataset:
         )
 
     def validation_data(self, batch_size):
-        return self._get_eval_data(self.load_split(self.validation_split), batch_size)
+        dataset = self.maybe_cache(self.load_split(self.validation_split), "eval")
+        return self._get_eval_data(dataset, batch_size)
 
     def test_data(self, batch_size):
-        return self._get_eval_data(self.load_split(self.test_split), batch_size)
+        dataset = self.maybe_cache(self.load_split(self.test_split), "test")
+        return self._get_eval_data(dataset, batch_size)
 
     def _get_eval_data(self, dataset, batch_size):
         return (

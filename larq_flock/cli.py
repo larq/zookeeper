@@ -41,6 +41,11 @@ def build_train(function):
     )
     @click.option("--data-dir", type=str, help="Directory with training data.")
     @click.option(
+        "--data-cache",
+        type=str,
+        help="A directory on the filesystem to use for caching the dataset. If `--data-cache=memory`, the dataset will be cached in memory.",
+    )
+    @click.option(
         "--output-prefix",
         default=os.path.expanduser("~/larq-flock-logs"),
         help="Directory prefix used to save model checkpoints and logs.",
@@ -65,6 +70,7 @@ def build_train(function):
         preprocess_fn,
         hparams_str,
         data_dir,
+        data_cache,
         output_prefix,
         output_dir,
         validationset,
@@ -73,7 +79,11 @@ def build_train(function):
         from larq_flock import registry
 
         dataset = registry.get_dataset(
-            dataset_name, preprocess_fn, validationset, data_dir
+            dataset_name,
+            preprocess_fn,
+            use_val_split=validationset,
+            cache_dir=data_cache,
+            data_dir=data_dir,
         )
         build_model = registry.get_model_function(model_name)
         hparams = registry.get_hparams(model_name, hparams_set)
