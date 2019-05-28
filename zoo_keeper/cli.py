@@ -47,7 +47,7 @@ def build_train(function):
     )
     @click.option(
         "--output-prefix",
-        default=os.path.expanduser("~/larq-flock-logs"),
+        default=os.path.expanduser("~/zoo-keeper-logs"),
         help="Directory prefix used to save model checkpoints and logs.",
     )
     @click.option(
@@ -76,7 +76,7 @@ def build_train(function):
         validationset,
         **kwargs,
     ):
-        from larq_flock import registry
+        from zoo_keeper import registry
 
         dataset = registry.get_dataset(
             dataset_name,
@@ -118,7 +118,7 @@ def prepare(datasets, data_dir):
 @click.option("--dataset", help="Tensorflow dataset name.")
 @click.option(
     "--output-prefix",
-    default=os.path.expanduser("~/larq-flock-logs"),
+    default=os.path.expanduser("~/zoo-keeper-logs"),
     help="Directory prefix used to save model checkpoints and logs.",
 )
 @click.option("--output-dir", "--logdir", help="Directory containing checkpoints.")
@@ -141,14 +141,14 @@ def tensorboard(model, dataset, output_prefix, output_dir):
 @click.option("--data-dir", type=str, help="Directory with training data.")
 @click.option(
     "--output-prefix",
-    default=os.path.join(os.path.expanduser("~/larq-flock-logs"), "plots"),
+    default=os.path.join(os.path.expanduser("~/zoo-keeper-logs"), "plots"),
     help="Directory prefix used to save plots",
 )
 @click.option(
     "--format", default="pdf", type=click.Choice(["png", "pdf", "ps", "eps", "svg"])
 )
 def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
-    from larq_flock import registry, data_vis
+    from zoo_keeper import registry, data_vis
 
     output_dir = Path(output_prefix).joinpath(dataset, preprocess_fn)
     output_dir.mkdir(parents=True, exist_ok=True)

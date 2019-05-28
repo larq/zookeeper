@@ -2,7 +2,7 @@
 """Tests for hparam."""
 import pytest
 import click
-from larq_flock import hparam
+from zoo_keeper import hparam
 
 
 def test_empty():

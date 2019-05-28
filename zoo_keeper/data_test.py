@@ -1,6 +1,6 @@
 import pytest
 from unittest import mock
-from larq_flock import data
+from zoo_keeper import data
 
 
 @mock.patch("os.makedirs")

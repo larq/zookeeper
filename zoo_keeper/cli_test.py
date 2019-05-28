@@ -1,4 +1,4 @@
-from larq_flock import registry, cli, build_train, HParams, data
+from zoo_keeper import registry, cli, build_train, HParams, data
 from click.testing import CliRunner
 import click
 from unittest import mock
@@ -154,7 +154,7 @@ def test_cli_wrong_hparams():
 def test_tensorboard(os_system):
     result = runner.invoke(cli, ["tensorboard", "foo", "--dataset", "bar"])
     assert result.exit_code == 0
-    logdir = path.expanduser("~/larq-flock-logs/bar/foo")
+    logdir = path.expanduser("~/zoo-keeper-logs/bar/foo")
     os_system.assert_called_once_with(f"tensorboard --logdir={logdir}")
 
 
