@@ -1,5 +1,7 @@
 # Zookeeper
 
+[![Azure DevOps builds](https://img.shields.io/azure-devops/build/plumerai/zookeeper/11.svg?logo=azure-devops)](https://plumerai.visualstudio.com/zookeeper/_build/latest?definitionId=11&branchName=master) [![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/plumerai/zookeeper/11.svg?logo=azure-devops)](https://plumerai.visualstudio.com/zookeeper/_build/latest?definitionId=11&branchName=master) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/zookeeper.svg)](https://pypi.org/project/zookeeper/) [![PyPI](https://img.shields.io/pypi/v/zookeeper.svg)](https://pypi.org/project/zookeeper/) [![PyPI - License](https://img.shields.io/pypi/l/zookeeper.svg)](https://github.com/plumerai/zookeeper/blob/master/LICENSE) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black) [![Join the community on Spectrum](https://withspectrum.github.io/badge/badge.svg)](https://spectrum.chat/larq)
+
 A small library for managing deep learning models, hyper parameters and datasets designed to make training deep learning models easy and reproducible.
 
 ## Getting Started
