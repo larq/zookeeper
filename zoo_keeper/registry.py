@@ -1,5 +1,5 @@
 import tensorflow_datasets as tfds
-from zoo_keeper.data import Dataset
+from zookeeper.data import Dataset
 
 MODEL_REGISTRY = {}
 HPARAMS_REGISTRY = {}

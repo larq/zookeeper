@@ -10,7 +10,7 @@ Zoo Keeper is heavily inspired by [Tensor2Tensor](https://github.com/tensorflow/
 ### Installation
 
 ```console
-pip install zoo-keeper
+pip install zookeeper
 pip install colorama  # optional for colored console output
 ```
 
@@ -26,7 +26,7 @@ In the following we will use [MNIST](http://yann.lecun.com/exdb/mnist) and defin
 ```python
 import tensorflow as tf
 
-from zoo_keeper import cli, build_train, HParams, registry
+from zookeeper import cli, build_train, HParams, registry
 
 @registry.register_preprocess("mnist")
 def default(image, training=False):
