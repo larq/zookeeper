@@ -17,12 +17,7 @@ setup(
     url="https://github.com/plumerai/zoo-keeper",
     packages=find_packages(),
     license="Apache 2.0",
-    install_requires=[
-        "click>=7.0",
-        "colorama>=0.4.1",
-        "matplotlib>=3.0.3",
-        "tensorflow-datasets>=1.0.1",
-    ],
+    install_requires=["click>=7.0", "matplotlib>=3.0.3", "tensorflow-datasets>=1.0.2"],
     extras_require={
         "tensorflow": ["tensorflow>=1.13.1"],
         "tensorflow_gpu": ["tensorflow-gpu>=1.13.1"],

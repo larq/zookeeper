@@ -16,8 +16,9 @@ def foo(hparams, dataset):
 
 
 @registry.register_hparams(foo)
-def bar():
-    return HParams(baz=3, baz_overwrite=0)
+class bar(HParams):
+    baz = 3
+    baz_overwrite = 0
 
 
 @cli.command()
