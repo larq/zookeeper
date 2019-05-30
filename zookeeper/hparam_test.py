@@ -2,7 +2,7 @@
 """Tests for hparam."""
 import pytest
 import click
-from zoo_keeper.hparam import HParams
+from zookeeper.hparam import HParams
 
 
 @pytest.fixture

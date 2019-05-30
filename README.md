@@ -1,22 +1,24 @@
-# Zoo Keeper
+# Zookeeper
+
+[![Azure DevOps builds](https://img.shields.io/azure-devops/build/plumerai/zookeeper/11.svg?logo=azure-devops)](https://plumerai.visualstudio.com/zookeeper/_build/latest?definitionId=11&branchName=master) [![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/plumerai/zookeeper/11.svg?logo=azure-devops)](https://plumerai.visualstudio.com/zookeeper/_build/latest?definitionId=11&branchName=master) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/zookeeper.svg)](https://pypi.org/project/zookeeper/) [![PyPI](https://img.shields.io/pypi/v/zookeeper.svg)](https://pypi.org/project/zookeeper/) [![PyPI - License](https://img.shields.io/pypi/l/zookeeper.svg)](https://github.com/plumerai/zookeeper/blob/master/LICENSE) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black) [![Join the community on Spectrum](https://withspectrum.github.io/badge/badge.svg)](https://spectrum.chat/larq)
 
 A small library for managing deep learning models, hyper parameters and datasets designed to make training deep learning models easy and reproducible.
 
 ## Getting Started
 
-Zoo Keeper allows you to build command line interfaces for training deep learning models with very little boiler plate using [click](https://click.palletsprojects.com/) and [TensorFlow Datasets](https://www.tensorflow.org/datasets/). It helps you structure your machine learning projects in a framework agnostic and effective way.
-Zoo Keeper is heavily inspired by [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor) and [Fairseq](https://github.com/pytorch/fairseq/) but is designed to be used as a library making it lightweight and very flexible. Currently Zoo Keeper is limited to image classification tasks but we are working on making it useful for other tasks as well.
+Zookeeper allows you to build command line interfaces for training deep learning models with very little boiler plate using [click](https://click.palletsprojects.com/) and [TensorFlow Datasets](https://www.tensorflow.org/datasets/). It helps you structure your machine learning projects in a framework agnostic and effective way.
+Zookeeper is heavily inspired by [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor) and [Fairseq](https://github.com/pytorch/fairseq/) but is designed to be used as a library making it lightweight and very flexible. Currently zookeeper is limited to image classification tasks but we are working on making it useful for other tasks as well.
 
 ### Installation
 
 ```console
-pip install zoo-keeper
+pip install zookeeper
 pip install colorama  # optional for colored console output
 ```
 
 ### Registry
 
-Zoo Keeper uses registries to keep track of you data preprocessing, models and hyperparameters.
+Zookeeper keeps track of data preprocessing, models and hyperparameters to allow you to reference them by name from the commandline.
 
 #### Datasets and Preprocessing
 
@@ -26,7 +28,7 @@ In the following we will use [MNIST](http://yann.lecun.com/exdb/mnist) and defin
 ```python
 import tensorflow as tf
 
-from zoo_keeper import cli, build_train, HParams, registry
+from zookeeper import cli, build_train, HParams, registry
 
 @registry.register_preprocess("mnist")
 def default(image, training=False):
@@ -78,7 +80,7 @@ class basic(HParams):
 
 ### Training loop
 
-To train the models registered above we will need to write a custom training loop. Zoo Keeper will then tie everything together:
+To train the models registered above we will need to write a custom training loop. Zookeeper will then tie everything together:
 
 ```python
 @cli.command()
@@ -111,11 +113,11 @@ if __name__ == "__main__":
     cli()
 ```
 
-If you want to register your models in separate files, make sure to import them before calling `cli` to allow Zoo Keeper to properly register them. To install your CLI as a executable command checkout the [`setuptools` integration](http://click.palletsprojects.com/en/7.x/setuptools/) of Click.
+If you want to register your models in separate files, make sure to import them before calling `cli` to allow zookeeper to properly register them. To install your CLI as a executable command checkout the [`setuptools` integration](http://click.palletsprojects.com/en/7.x/setuptools/) of Click.
 
 #### Usage
 
-Zoo Keeper already ships with `prepare`, `plot`, and `tensorboard` commands, but now also includes the `train` command we created above:
+Zookeeper already ships with `prepare`, `plot`, and `tensorboard` commands, but now also includes the `train` command we created above:
 
 ```console
 python examples/train.py --help

@@ -1,4 +1,4 @@
-from zoo_keeper import cli, build_train, registry, HParams
+from zookeeper import cli, build_train, registry, HParams
 import tensorflow as tf
 
 
