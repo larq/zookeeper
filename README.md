@@ -1,11 +1,11 @@
-# Zoo Keeper
+# Zookeeper
 
 A small library for managing deep learning models, hyper parameters and datasets designed to make training deep learning models easy and reproducible.
 
 ## Getting Started
 
-Zoo Keeper allows you to build command line interfaces for training deep learning models with very little boiler plate using [click](https://click.palletsprojects.com/) and [TensorFlow Datasets](https://www.tensorflow.org/datasets/). It helps you structure your machine learning projects in a framework agnostic and effective way.
-Zoo Keeper is heavily inspired by [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor) and [Fairseq](https://github.com/pytorch/fairseq/) but is designed to be used as a library making it lightweight and very flexible. Currently Zoo Keeper is limited to image classification tasks but we are working on making it useful for other tasks as well.
+Zookeeper allows you to build command line interfaces for training deep learning models with very little boiler plate using [click](https://click.palletsprojects.com/) and [TensorFlow Datasets](https://www.tensorflow.org/datasets/). It helps you structure your machine learning projects in a framework agnostic and effective way.
+Zookeeper is heavily inspired by [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor) and [Fairseq](https://github.com/pytorch/fairseq/) but is designed to be used as a library making it lightweight and very flexible. Currently zookeeper is limited to image classification tasks but we are working on making it useful for other tasks as well.
 
 ### Installation
 
@@ -16,7 +16,7 @@ pip install colorama  # optional for colored console output
 
 ### Registry
 
-Zoo Keeper uses registries to keep track of you data preprocessing, models and hyperparameters.
+Zookeeper keeps track of data preprocessing, models and hyperparameters to allow you to reference them by name from the commandline.
 
 #### Datasets and Preprocessing
 
@@ -78,7 +78,7 @@ class basic(HParams):
 
 ### Training loop
 
-To train the models registered above we will need to write a custom training loop. Zoo Keeper will then tie everything together:
+To train the models registered above we will need to write a custom training loop. Zookeeper will then tie everything together:
 
 ```python
 @cli.command()
@@ -111,11 +111,11 @@ if __name__ == "__main__":
     cli()
 ```
 
-If you want to register your models in separate files, make sure to import them before calling `cli` to allow Zoo Keeper to properly register them. To install your CLI as a executable command checkout the [`setuptools` integration](http://click.palletsprojects.com/en/7.x/setuptools/) of Click.
+If you want to register your models in separate files, make sure to import them before calling `cli` to allow zookeeper to properly register them. To install your CLI as a executable command checkout the [`setuptools` integration](http://click.palletsprojects.com/en/7.x/setuptools/) of Click.
 
 #### Usage
 
-Zoo Keeper already ships with `prepare`, `plot`, and `tensorboard` commands, but now also includes the `train` command we created above:
+Zookeeper already ships with `prepare`, `plot`, and `tensorboard` commands, but now also includes the `train` command we created above:
 
 ```console
 python examples/train.py --help
