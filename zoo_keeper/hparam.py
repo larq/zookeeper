@@ -1,6 +1,6 @@
 import ast
 import re
-import collections
+import collections.abc
 
 try:  # pragma: no cover
     from colorama import Fore
