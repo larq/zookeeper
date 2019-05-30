@@ -43,6 +43,8 @@ class HParams(collections.abc.Mapping):
     ```
     """
 
+    _private_methods = {"get", "items", "keys", "parse", "values"}
+
     def parse(self, value):
         """Override existing hyperparameter values, parsing new values from a string.
 
@@ -56,8 +58,9 @@ class HParams(collections.abc.Mapping):
         ValueError: If `values` cannot be parsed or a hyperparameter in `values`
             doesn't exist.
         """
+        hparams_keys = set(self.__iter__())
         for key, value in group(filter(None, SPLIT_REGEX.split(value))):
-            if not key in self.__iter__():
+            if not key in hparams_keys:
                 raise ValueError(f"Unknown hyperparameter '{key}'")
             try:
                 value = ast.literal_eval(value)
@@ -66,7 +69,11 @@ class HParams(collections.abc.Mapping):
             object.__setattr__(self, key, value)
 
     def __iter__(self):
-        return (k for k in self.__class__.__dict__.keys() if not k.startswith("_"))
+        return (
+            k
+            for k in self.__dir__()
+            if k not in self._private_methods and not k.startswith("_")
+        )
 
     def __getitem__(self, item):
         if item in self.__iter__():
