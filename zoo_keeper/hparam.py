@@ -2,7 +2,7 @@ import ast
 import re
 import collections
 
-try:
+try:  # pragma: no cover
     from colorama import Fore
 
     BLUE, YELLOW, RESET = Fore.BLUE, Fore.YELLOW, Fore.RESET
