@@ -16,6 +16,9 @@ def hyper():
         def barx2(self):
             return self.bar * 2
 
+        def bar_func(self):
+            return self.bar
+
     return Hyper()
 
 
@@ -24,6 +27,7 @@ def test_defaults(hyper):
     assert hyper.bar == 0.5
     assert hyper.barx2 == 1.0
     assert hyper.baz == "string"
+    assert hyper.bar_func() == hyper.bar
 
 
 def test_parse(hyper):
@@ -32,6 +36,7 @@ def test_parse(hyper):
     assert hyper.bar == 1.0
     assert hyper.barx2 == 2.0
     assert hyper.baz == "changed"
+    assert hyper.bar_func() == hyper.bar
 
 
 def test_parse_fail(hyper):
@@ -52,11 +57,16 @@ def test_get_private_methods(hyper):
 
 
 def test_repr(hyper):
+    output = "Hyper(bar=0.5,bar_func=<callable>,barx2=1.0,baz=string,foo=[1, 2, 3])"
+    assert repr(hyper) == output
+
+
+def test_str(hyper):
     output = """Hyper(
     bar=0.5,
+    bar_func=<callable>,
     barx2=1.0,
     baz=string,
     foo=[1, 2, 3]
 )"""
     assert click.unstyle(str(hyper)) == output
-    assert click.unstyle(repr(hyper)) == output

@@ -16,6 +16,12 @@ def group(sequence):
     return zip(*[iter(sequence)] * 2)
 
 
+def str_key_val(key, value, color=True):
+    if callable(value):
+        value = "<callable>"
+    return f"{BLUE}{key}{RESET}={YELLOW}{value}{RESET}" if color else f"{key}={value}"
+
+
 class HParams(collections.abc.Mapping):
     """Class to hold a set of immutable hyperparameters as name-value pairs.
 
@@ -87,11 +93,11 @@ class HParams(collections.abc.Mapping):
         raise AttributeError("Hyperparameters are immutable, cannot assign to field.")
 
     def __str__(self):
-        tab = "\n    "
-        params = f",{tab}".join(
-            [f"{BLUE}{k}{RESET}={YELLOW}{v}{RESET}" for k, v in sorted(self.items())]
-        )
-        return f"{self.__class__.__name__}({tab}{params}\n)"
+        params = ",\n    ".join([str_key_val(k, v) for k, v in sorted(self.items())])
+        return f"{self.__class__.__name__}(\n    {params}\n)"
 
     def __repr__(self):
-        return self.__str__()
+        params = ",".join(
+            [str_key_val(k, v, color=False) for k, v in sorted(self.items())]
+        )
+        return f"{self.__class__.__name__}({params})"
