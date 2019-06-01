@@ -43,7 +43,7 @@ class HParams(collections.abc.Mapping):
     ```
     """
 
-    _private_methods = {"get", "items", "keys", "parse", "values"}
+    _abc_methods = {"get", "items", "keys", "parse", "values"}
 
     def parse(self, value):
         """Override existing hyperparameter values, parsing new values from a string.
@@ -68,16 +68,18 @@ class HParams(collections.abc.Mapping):
                 raise ValueError(f"Could not parse '{value}'") from None
             object.__setattr__(self, key, value)
 
+    def _is_hparam(self, item):
+        return item not in self._abc_methods and not item.startswith("_")
+
     def __iter__(self):
-        return (
-            k
-            for k in self.__dir__()
-            if k not in self._private_methods and not k.startswith("_")
-        )
+        return (item for item in self.__dir__() if self._is_hparam(item))
 
     def __getitem__(self, item):
-        if item in self.__iter__():
-            return getattr(self, item)
+        try:
+            if self._is_hparam(item):
+                return getattr(self, item)
+        except:
+            pass
         raise KeyError(item)
 
     def __len__(self):
