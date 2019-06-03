@@ -5,7 +5,7 @@ If you want to contribute to Zookeeper and make it better, your help is very wel
 ### How to make a clean pull request
 
 
-- Create a personal fork of the project on Github.
+- Create a personal fork of the project on GitHub.
 - Clone the fork on your local machine. Your remote repo on Github is called `origin`.
 - Add the original repository as a remote called `upstream`.
 - If you created your fork a while ago be sure to pull upstream changes into your local repository.
