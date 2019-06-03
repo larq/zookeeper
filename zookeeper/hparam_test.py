@@ -51,9 +51,11 @@ def test_immutability(hyper):
         hyper.new_prop = 3
 
 
-def test_get_private_methods(hyper):
+def test_key_error(hyper):
     with pytest.raises(KeyError):
         hyper["__dict__"]
+    with pytest.raises(KeyError):
+        hyper["unknown"]
 
 
 def test_repr(hyper):
