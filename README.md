@@ -141,3 +141,9 @@ To train the model we just registered run:
 ```console
 python examples/train.py train cnn --dataset mnist --epochs 10 --hparams-set basic --hparams batch_size=64
 ```
+
+The `--hparams` argument gets parsed. To pass a string as an hyperparameter, use escape characters for the quotation marks:
+
+```console
+python examples/train.py train cnn --dataset mnist --epochs 10 --hparams-set basic --hparams actvation=\"relu\"
+```
