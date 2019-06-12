@@ -4,8 +4,6 @@ import inspect
 import os
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import click
-
 
 class Dataset:
     def __init__(
@@ -21,6 +19,7 @@ class Dataset:
         self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
         self.cache_dir = cache_dir
+        self.autotune = autotune
 
         dataset_builder = tfds.builder(dataset_name)
         splits = dataset_builder.info.splits
@@ -100,11 +99,11 @@ class Dataset:
             .map(
                 functools.partial(self.map_fn, training=True),
                 num_parallel_calls=tf.data.experimental.AUTOTUNE
-                if autotune
+                if self.autotune
                 else 1 * batch_size,
             )
             .batch(batch_size)
-            .prefetch(tf.data.experimental.AUTOTUNE if autotune else 2)
+            .prefetch(tf.data.experimental.AUTOTUNE if self.autotune else 2)
         )
 
     def validation_data(self, batch_size):
@@ -121,9 +120,9 @@ class Dataset:
             .map(
                 self.map_fn,
                 num_parallel_calls=tf.data.experimental.AUTOTUNE
-                if autotune
+                if self.autotune
                 else 1 * batch_size,
             )
             .batch(batch_size)
-            .prefetch(tf.data.experimental.AUTOTUNE if autotune else 2)
+            .prefetch(tf.data.experimental.AUTOTUNE if self.autotune else 2)
         )
