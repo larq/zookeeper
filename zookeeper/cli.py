@@ -61,6 +61,11 @@ def build_train(function):
         default=False,
         help="If you want to split a dataset which only contains a train/test into train/val/test",
     )
+    @click.option(
+        "--autotune/--no-autotune",
+        default=True,
+        help="Use tf.data.experimental.AUTOTUNE for data pipeline.",
+    )
     @wraps(function)
     def train(
         model_name,
@@ -74,6 +79,7 @@ def build_train(function):
         output_prefix,
         output_dir,
         validationset,
+        autotune,
         **kwargs,
     ):
         from zookeeper import registry
@@ -84,6 +90,7 @@ def build_train(function):
             use_val_split=validationset,
             cache_dir=data_cache,
             data_dir=data_dir,
+            autotune=autotune,
         )
         build_model = registry.get_model_function(model_name)
         hparams = registry.get_hparams(model_name, hparams_set)
