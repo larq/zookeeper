@@ -141,3 +141,9 @@ To train the model we just registered run:
 ```console
 python examples/train.py train cnn --dataset mnist --epochs 10 --hparams-set basic --hparams batch_size=64
 ```
+
+Multiple arguments are seperated by a comma, and strings should be passed without quotion marks:
+
+```console
+python examples/train.py train cnn --dataset mnist --epochs 10 --hparams-set basic --hparams batch_size=32,actvation=relu
+```

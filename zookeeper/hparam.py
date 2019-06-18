@@ -70,6 +70,10 @@ class HParams(collections.abc.Mapping):
                 raise ValueError(f"Unknown hyperparameter '{key}'")
             try:
                 value = ast.literal_eval(value)
+            except ValueError:
+                # Parse as string if above raises ValueError. Note that
+                # syntax errors will still raise an error.
+                value = str(value)
             except:
                 raise ValueError(f"Could not parse '{value}'") from None
             object.__setattr__(self, key, value)
