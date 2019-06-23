@@ -1,8 +1,12 @@
 import click
+import click_completion
+import click_completion.core
 import os
 from pathlib import Path
 from datetime import datetime
 from functools import wraps
+
+click_completion.init()
 
 
 @click.group()
@@ -157,6 +161,32 @@ def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
     figs = data_vis.plot_all_examples(set.load_split(set.train_split), set.map_fn)
     for fig, filename in zip(figs, ("raw", "train", "eval")):
         fig.savefig(output_dir.joinpath(filename).absolute(), format=format)
+
+
+@cli.command()
+@click.option(
+    "--append/--overwrite", help="Append the completion code to the file", default=None
+)
+@click.option(
+    "-i", "--case-insensitive/--no-case-insensitive", help="Case insensitive completion"
+)
+@click.argument(
+    "shell",
+    required=False,
+    type=click_completion.DocumentedChoice(click_completion.core.shells),
+)
+@click.argument("path", required=False)
+def install_completion(append, case_insensitive, shell, path):
+    """Install shell completion"""
+    extra_env = (
+        {"_CLICK_COMPLETION_COMMAND_CASE_INSENSITIVE_COMPLETE": "ON"}
+        if case_insensitive
+        else {}
+    )
+    shell, path = click_completion.core.install(
+        shell=shell, path=path, append=append, extra_env=extra_env
+    )
+    click.secho(f"{shell} completion installed in {path}.", fg="green")
 
 
 if __name__ == "__main__":  # pragma: no cover
