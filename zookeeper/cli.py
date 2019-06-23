@@ -110,6 +110,7 @@ def build_train(function):
 @click.argument("datasets", type=str, nargs=-1)
 @click.option("--data-dir", type=str, help="Directory with training data.")
 def prepare(datasets, data_dir):
+    """Downloads and prepares datasets for reading."""
     import tensorflow_datasets as tfds
 
     for dataset in datasets:
@@ -127,6 +128,7 @@ def prepare(datasets, data_dir):
 )
 @click.option("--output-dir", "--logdir", help="Directory containing checkpoints.")
 def tensorboard(model, dataset, output_prefix, output_dir):
+    """Start TensorBoard to monitor model training."""
     if output_dir is None:
         output_dir = output_prefix
         if dataset:
@@ -152,6 +154,7 @@ def tensorboard(model, dataset, output_prefix, output_dir):
     "--format", default="pdf", type=click.Choice(["png", "pdf", "ps", "eps", "svg"])
 )
 def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
+    """Plot data examples."""
     from zookeeper import registry, data_vis
 
     output_dir = Path(output_prefix).joinpath(dataset, preprocess_fn)
@@ -177,7 +180,7 @@ def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
 )
 @click.argument("path", required=False)
 def install_completion(append, case_insensitive, shell, path):
-    """Install shell completion"""
+    """Install shell completion."""
     extra_env = (
         {"_CLICK_COMPLETION_COMMAND_CASE_INSENSITIVE_COMPLETE": "ON"}
         if case_insensitive

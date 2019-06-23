@@ -86,6 +86,7 @@ To train the models registered above we will need to write a custom training loo
 @cli.command()
 @build_train
 def train(build_model, dataset, hparams, output_dir, epochs):
+    """Start model training."""
     model = build_model(hparams, dataset)
     model.compile(
         optimizer=hparams.optimizer,
@@ -130,10 +131,11 @@ Options:
   --help  Show this message and exit.
 
 Commands:
-  plot
-  prepare
-  tensorboard
-  train
+  install-completion  Install shell completion.
+  plot                Plot data examples.
+  prepare             Downloads and prepares datasets for reading.
+  tensorboard         Start TensorBoard to monitor model training.
+  train               Start model training.
 ```
 
 To train the model we just registered run:
