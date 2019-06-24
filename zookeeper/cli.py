@@ -14,96 +14,105 @@ def cli():
     pass
 
 
-def build_train(function):
-    @click.argument("model_name")
-    @click.option(
-        "--dataset",
-        "dataset_name",
-        type=str,
-        required=True,
-        help="Tensorflow dataset name. See https://www.tensorflow.org/datasets/datasets for a list of available datasets",
-    )
-    @click.option(
-        "--hparams-set",
-        default="default",
-        required=True,
-        help="Hyperparameter set to use.",
-    )
-    @click.option(
-        "--epochs", default=100, help="The number of epochs to run training for."
-    )
-    @click.option(
-        "--preprocess-fn",
-        default="default",
-        help="Function used to preprocess dataset.",
-    )
-    @click.option(
-        "--hparams",
-        "hparams_str",
-        type=str,
-        help="A comma-separated list of `name=value` hyperparameter values. This option is used to override hyperparameter settings. If a hyperparameter setting is specified by this flag then it must be a valid hyperparameter name for the model.",
-    )
-    @click.option("--data-dir", type=str, help="Directory with training data.")
-    @click.option(
-        "--data-cache",
-        type=str,
-        help="A directory on the filesystem to use for caching the dataset. If `--data-cache=memory`, the dataset will be cached in memory.",
-    )
-    @click.option(
-        "--output-prefix",
-        default=os.path.expanduser("~/zookeeper-logs"),
-        help="Directory prefix used to save model checkpoints and logs.",
-    )
-    @click.option(
-        "--output-dir",
-        "--logdir",
-        type=str,
-        help="Directory containing model checkpoints. This can be used to resume model training.",
-    )
-    @click.option(
-        "--validationset/--no-validationset",
-        default=False,
-        help="If you want to split a dataset which only contains a train/test into train/val/test",
-    )
-    @wraps(function)
-    def train(
-        model_name,
-        dataset_name,
-        hparams_set,
-        epochs,
-        preprocess_fn,
-        hparams_str,
-        data_dir,
-        data_cache,
-        output_prefix,
-        output_dir,
-        validationset,
-        **kwargs,
-    ):
-        from zookeeper import registry
-
-        dataset = registry.get_dataset(
-            dataset_name,
-            preprocess_fn,
-            use_val_split=validationset,
-            cache_dir=data_cache,
-            data_dir=data_dir,
+def build_train(preload=None):
+    def decorator(function):
+        @click.argument("model_name")
+        @click.option(
+            "--dataset",
+            "dataset_name",
+            type=str,
+            required=True,
+            help="Tensorflow dataset name. See https://www.tensorflow.org/datasets/datasets for a list of available datasets",
         )
-        build_model = registry.get_model_function(model_name)
-        hparams = registry.get_hparams(model_name, hparams_set)
-        if hparams_str:
-            hparams.parse(hparams_str)
-        click.echo(hparams)
+        @click.option(
+            "--hparams-set",
+            default="default",
+            required=True,
+            help="Hyperparameter set to use.",
+        )
+        @click.option(
+            "--epochs", default=100, help="The number of epochs to run training for."
+        )
+        @click.option(
+            "--preprocess-fn",
+            default="default",
+            help="Function used to preprocess dataset.",
+        )
+        @click.option(
+            "--hparams",
+            "hparams_str",
+            type=str,
+            help="A comma-separated list of `name=value` hyperparameter values. This option is used to override hyperparameter settings. If a hyperparameter setting is specified by this flag then it must be a valid hyperparameter name for the model.",
+        )
+        @click.option("--data-dir", type=str, help="Directory with training data.")
+        @click.option(
+            "--data-cache",
+            type=str,
+            help="A directory on the filesystem to use for caching the dataset. If `--data-cache=memory`, the dataset will be cached in memory.",
+        )
+        @click.option(
+            "--output-prefix",
+            default=os.path.expanduser("~/zookeeper-logs"),
+            help="Directory prefix used to save model checkpoints and logs.",
+        )
+        @click.option(
+            "--output-dir",
+            "--logdir",
+            type=str,
+            help="Directory containing model checkpoints. This can be used to resume model training.",
+        )
+        @click.option(
+            "--validationset/--no-validationset",
+            default=False,
+            help="If you want to split a dataset which only contains a train/test into train/val/test",
+        )
+        @wraps(function)
+        def train(
+            model_name,
+            dataset_name,
+            hparams_set,
+            epochs,
+            preprocess_fn,
+            hparams_str,
+            data_dir,
+            data_cache,
+            output_prefix,
+            output_dir,
+            validationset,
+            **kwargs,
+        ):
+            from zookeeper import registry
 
-        if output_dir is None:
-            time_stamp = datetime.now().strftime("%Y%m%d_%H%M")
-            output_dir = os.path.join(
-                output_prefix, dataset_name, model_name, f"{hparams_set}_{time_stamp}"
+            if preload:
+                preload()
+
+            dataset = registry.get_dataset(
+                dataset_name,
+                preprocess_fn,
+                use_val_split=validationset,
+                cache_dir=data_cache,
+                data_dir=data_dir,
             )
+            build_model = registry.get_model_function(model_name)
+            hparams = registry.get_hparams(model_name, hparams_set)
+            if hparams_str:
+                hparams.parse(hparams_str)
+            click.echo(hparams)
 
-        function(build_model, dataset, hparams, output_dir, epochs, **kwargs)
+            if output_dir is None:
+                time_stamp = datetime.now().strftime("%Y%m%d_%H%M")
+                output_dir = os.path.join(
+                    output_prefix,
+                    dataset_name,
+                    model_name,
+                    f"{hparams_set}_{time_stamp}",
+                )
 
-    return train
+            function(build_model, dataset, hparams, output_dir, epochs, **kwargs)
+
+        return train
+
+    return decorator
 
 
 @cli.command()

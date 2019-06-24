@@ -23,7 +23,7 @@ class bar(HParams):
 
 @cli.command()
 @click.option("--custom-opt", type=str, required=True)
-@build_train
+@build_train()
 def train(build_model, dataset, hparams, output_dir, epochs, custom_opt):
     assert isinstance(hparams, HParams)
     assert isinstance(dataset, data.Dataset)
@@ -42,7 +42,7 @@ def train(build_model, dataset, hparams, output_dir, epochs, custom_opt):
 
 
 @cli.command()
-@build_train
+@build_train()
 def train_val(build_model, dataset, hparams, output_dir, epochs):
     assert isinstance(hparams, HParams)
     assert isinstance(dataset, data.Dataset)
@@ -58,7 +58,7 @@ def train_val(build_model, dataset, hparams, output_dir, epochs):
 
 
 @cli.command()
-@build_train
+@build_train()
 def train_fail(build_model, dataset, hparams, output_dir, epochs):
     pass
 
