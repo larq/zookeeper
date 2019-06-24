@@ -84,7 +84,7 @@ To train the models registered above we will need to write a custom training loo
 
 ```python
 @cli.command()
-@build_train
+@build_train()
 def train(build_model, dataset, hparams, output_dir, epochs):
     """Start model training."""
     model = build_model(hparams, dataset)

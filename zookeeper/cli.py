@@ -2,9 +2,7 @@ import click
 import click_completion
 import click_completion.core
 import os
-from pathlib import Path
-from datetime import datetime
-from functools import wraps
+import functools
 
 click_completion.init()
 
@@ -66,7 +64,7 @@ def build_train(preload=None):
             default=False,
             help="If you want to split a dataset which only contains a train/test into train/val/test",
         )
-        @wraps(function)
+        @functools.wraps(function)
         def train(
             model_name,
             dataset_name,
@@ -81,6 +79,7 @@ def build_train(preload=None):
             validationset,
             **kwargs,
         ):
+            from datetime import datetime
             from zookeeper import registry
 
             if preload:
@@ -164,6 +163,7 @@ def tensorboard(model, dataset, output_prefix, output_dir):
 )
 def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
     """Plot data examples."""
+    from pathlib import Path
     from zookeeper import registry, data_vis
 
     output_dir = Path(output_prefix).joinpath(dataset, preprocess_fn)
