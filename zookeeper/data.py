@@ -6,6 +6,23 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
+def _with_options(dataset):
+    """Applies optimization options from tfds-nightly to given dataset.
+    """
+    options = tf.data.Options()
+    options.experimental_threading.max_intra_op_parallelism = 1
+    options.experimental_threading.private_threadpool_size = 16
+    options.experimental_optimization.apply_default_optimizations = True
+    options.experimental_optimization.map_fusion = True
+    options.experimental_optimization.map_parallelization = True
+    try:
+        # This option is only available in TensorFlow 1.14
+        options.experimental_slack = True
+    except:
+        pass
+    return dataset.with_options(options)
+
+
 class Dataset:
     def __init__(
         self,
@@ -92,7 +109,7 @@ class Dataset:
 
     def train_data(self, batch_size):
         return (
-            self.maybe_cache(self.load_split(self.train_split), "train")
+            self.maybe_cache(_with_options(self.load_split(self.train_split)), "train")
             .shuffle(10 * batch_size)
             .repeat()
             .map(
@@ -113,8 +130,9 @@ class Dataset:
 
     def _get_eval_data(self, dataset, batch_size):
         return (
-            dataset.repeat()
+            _with_options(dataset)
+            .repeat()
             .map(self.map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .batch(batch_size)
-            .prefetch(tf.data.experimental.AUTOTUNE)
+            .prefetch(1)
         )
