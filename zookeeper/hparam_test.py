@@ -39,6 +39,15 @@ def test_parse(hyper):
     assert hyper.bar_func() == hyper.bar
 
 
+def test_spaced_parse(hyper):
+    hyper.parse("foo=[4, 5, 6], bar=1.,baz='spaced argument'")
+    assert hyper.foo == [4, 5, 6]
+    assert hyper.bar == 1.0
+    assert hyper.barx2 == 2.0
+    assert hyper.baz == "spaced argument"
+    assert hyper.bar_func() == hyper.bar
+
+
 def test_parse_fail(hyper):
     with pytest.raises(ValueError):
         hyper.parse("foo=[4, 5, 6")

@@ -65,7 +65,11 @@ class HParams(collections.abc.Mapping):
             doesn't exist.
         """
         hparams_keys = set(self.__iter__())
-        for key, value in group(filter(None, SPLIT_REGEX.split(value))):
+        for key, value in group(
+            filter(
+                None, SPLIT_REGEX.split(value.replace(",\n", ",").replace(", ", ","))
+            )
+        ):
             if not key in hparams_keys:
                 raise ValueError(f"Unknown hyperparameter '{key}'")
             try:
