@@ -30,6 +30,7 @@ def cnn(hp, dataset):
 
 @registry.register_hparams(cnn)
 class basic(HParams):
+    epochs = 100
     activation = "relu"
     batch_size = 32
     filters = [64, 64, 64, 64]
@@ -46,8 +47,8 @@ class small(basic):
 
 
 @cli.command()
-@build_train
-def train(build_model, dataset, hparams, output_dir, epochs):
+@build_train()
+def train(build_model, dataset, hparams, output_dir):
     model = build_model(hparams, dataset)
     model.compile(
         optimizer=hparams.optimizer,
@@ -57,7 +58,7 @@ def train(build_model, dataset, hparams, output_dir, epochs):
 
     model.fit(
         dataset.train_data(hparams.batch_size),
-        epochs=epochs,
+        epochs=hparams.epochs,
         steps_per_epoch=dataset.train_examples // hparams.batch_size,
         validation_data=dataset.validation_data(hparams.batch_size),
         validation_steps=dataset.validation_examples // hparams.batch_size,

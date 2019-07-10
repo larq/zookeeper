@@ -29,9 +29,6 @@ def build_train(preload=None):
             help="Hyperparameter set to use.",
         )
         @click.option(
-            "--epochs", default=100, help="The number of epochs to run training for."
-        )
-        @click.option(
             "--preprocess-fn",
             default="default",
             help="Function used to preprocess dataset.",
@@ -69,7 +66,6 @@ def build_train(preload=None):
             model_name,
             dataset_name,
             hparams_set,
-            epochs,
             preprocess_fn,
             hparams_str,
             data_dir,
@@ -107,7 +103,7 @@ def build_train(preload=None):
                     f"{hparams_set}_{time_stamp}",
                 )
 
-            function(build_model, dataset, hparams, output_dir, epochs, **kwargs)
+            function(build_model, dataset, hparams, output_dir, **kwargs)
 
         return train
 
