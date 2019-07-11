@@ -85,7 +85,7 @@ To train the models registered above we will need to write a custom training loo
 ```python
 @cli.command()
 @build_train()
-def train(build_model, dataset, hparams, output_dir, epochs):
+def train(build_model, dataset, hparams, output_dir):
     """Start model training."""
     model = build_model(hparams, dataset)
     model.compile(
@@ -96,7 +96,6 @@ def train(build_model, dataset, hparams, output_dir, epochs):
 
     model.fit(
         dataset.train_data(hparams.batch_size),
-        epochs=epochs,
         steps_per_epoch=dataset.train_examples // hparams.batch_size,
         validation_data=dataset.validation_data(hparams.batch_size),
         validation_steps=dataset.validation_examples // hparams.batch_size,
@@ -141,11 +140,11 @@ Commands:
 To train the model we just registered run:
 
 ```console
-python examples/train.py train cnn --dataset mnist --epochs 10 --hparams-set basic --hparams batch_size=64
+python examples/train.py train cnn --dataset mnist --hparams-set basic --hparams batch_size=64
 ```
 
 Multiple arguments are seperated by a comma, and strings should be passed without quotion marks:
 
 ```console
-python examples/train.py train cnn --dataset mnist --epochs 10 --hparams-set basic --hparams batch_size=32,actvation=relu
+python examples/train.py train cnn --dataset mnist --hparams-set basic --hparams batch_size=32,actvation=relu
 ```
