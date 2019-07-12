@@ -14,7 +14,7 @@ setup(
     description="A small library for managing deep learning models, hyper parameters and datasets",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    url="https://github.com/plumerai/zookeeper",
+    url="https://github.com/larq/zookeeper",
     packages=find_packages(),
     license="Apache 2.0",
     install_requires=[
