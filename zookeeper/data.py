@@ -15,11 +15,6 @@ def _with_options(dataset):
     options.experimental_optimization.apply_default_optimizations = True
     options.experimental_optimization.map_fusion = True
     options.experimental_optimization.map_parallelization = True
-    try:
-        # This option is only available in TensorFlow 1.14
-        options.experimental_slack = True
-    except:
-        pass
     return dataset.with_options(options)
 
 
