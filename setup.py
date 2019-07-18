@@ -17,6 +17,7 @@ setup(
     url="https://github.com/larq/zookeeper",
     packages=find_packages(),
     license="Apache 2.0",
+    python_requires=">=3.6",
     install_requires=[
         "click>=7.0",
         "click-completion>=0.5.1",
