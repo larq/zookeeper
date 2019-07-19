@@ -56,11 +56,21 @@ def train(build_model, dataset, hparams, output_dir):
         metrics=["categorical_accuracy", "top_k_categorical_accuracy"],
     )
 
+    train_data = (
+        dataset.train_data(shuffle_buffer=1024)
+        .batch(hparams.batch_size)
+        .repeat()
+        .prefetch(1)
+    )
+    validation_data = (
+        dataset.validation_data().batch(hparams.batch_size).repeat().prefetch(1)
+    )
+
     model.fit(
-        dataset.train_data(hparams.batch_size),
+        train_data,
         epochs=hparams.epochs,
         steps_per_epoch=dataset.train_examples // hparams.batch_size,
-        validation_data=dataset.validation_data(hparams.batch_size),
+        validation_data=validation_data,
         validation_steps=dataset.validation_examples // hparams.batch_size,
     )
 

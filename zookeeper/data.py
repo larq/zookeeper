@@ -6,18 +6,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
-def _with_options(dataset):
-    """Applies optimization options from tfds-nightly to given dataset.
-    """
-    options = tf.data.Options()
-    options.experimental_threading.max_intra_op_parallelism = 1
-    options.experimental_threading.private_threadpool_size = 16
-    options.experimental_optimization.apply_default_optimizations = True
-    options.experimental_optimization.map_fusion = True
-    options.experimental_optimization.map_parallelization = True
-    return dataset.with_options(options)
-
-
 class Dataset:
     def __init__(
         self,
@@ -102,32 +90,21 @@ class Dataset:
             return dataset
         return dataset.cache(self.get_cache_path(split_name))
 
-    def train_data(self, batch_size):
-        return (
-            self.maybe_cache(_with_options(self.load_split(self.train_split)), "train")
-            .shuffle(10 * batch_size)
-            .repeat()
-            .map(
-                functools.partial(self.map_fn, training=True),
-                num_parallel_calls=tf.data.experimental.AUTOTUNE,
-            )
-            .batch(batch_size)
-            .prefetch(tf.data.experimental.AUTOTUNE)
+    def train_data(self, shuffle_buffer=None):
+        dataset = self.maybe_cache(self.load_split(self.train_split), "train")
+        if shuffle_buffer is not None:
+            dataset = dataset.shuffle(shuffle_buffer)
+        return dataset.map(
+            functools.partial(self.map_fn, training=True),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
 
-    def validation_data(self, batch_size):
-        dataset = self.maybe_cache(self.load_split(self.validation_split), "eval")
-        return self._get_eval_data(dataset, batch_size)
+    def validation_data(self):
+        return self.maybe_cache(self.load_split(self.validation_split), "eval").map(
+            self.map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE
+        )
 
-    def test_data(self, batch_size):
-        dataset = self.maybe_cache(self.load_split(self.test_split), "test")
-        return self._get_eval_data(dataset, batch_size)
-
-    def _get_eval_data(self, dataset, batch_size):
-        return (
-            _with_options(dataset)
-            .repeat()
-            .map(self.map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-            .batch(batch_size)
-            .prefetch(1)
+    def test_data(self):
+        return self.maybe_cache(self.load_split(self.test_split), "test").map(
+            self.map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE
         )

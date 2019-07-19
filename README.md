@@ -94,12 +94,8 @@ def train(build_model, dataset, hparams, output_dir):
         metrics=["categorical_accuracy", "top_k_categorical_accuracy"],
     )
 
-    model.fit(
-        dataset.train_data(hparams.batch_size),
-        steps_per_epoch=dataset.train_examples // hparams.batch_size,
-        validation_data=dataset.validation_data(hparams.batch_size),
-        validation_steps=dataset.validation_examples // hparams.batch_size,
-    )
+    train_data = dataset.train_data(shuffle_buffer=1024).batch(hparams.batch_size).prefetch(1)
+    model.fit(train_data, epochs=hparams.epochs)
 ```
 
 This will register Click command called `train` which can be executed from the command line.
