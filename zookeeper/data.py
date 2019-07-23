@@ -100,7 +100,7 @@ class Dataset:
                 num_parallel_calls=tf.data.experimental.AUTOTUNE,
             )
             .batch(batch_size)
-            .prefetch(tf.data.experimental.AUTOTUNE)
+            .prefetch(1)
         )
 
     def validation_data(self, batch_size):
