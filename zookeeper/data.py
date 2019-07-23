@@ -21,13 +21,14 @@ class Dataset:
         self.cache_dir = cache_dir
 
         dataset_builder = tfds.builder(dataset_name)
-        splits = dataset_builder.info.splits
-        features = dataset_builder.info.features
+        self.info = dataset_builder.info
+        splits = self.info.splits
+        features = self.info.features
         if tfds.Split.TRAIN not in splits:
             raise ValueError("To train we require a train split in the dataset.")
         if tfds.Split.TEST not in splits and tfds.Split.VALIDATION not in splits:
             raise ValueError("We require a test or validation split in the dataset.")
-        if not {"image", "label"} <= set(dataset_builder.info.supervised_keys or []):
+        if not {"image", "label"} <= set(self.info.supervised_keys or []):
             raise NotImplementedError("We currently only support image classification")
 
         self.num_classes = features["label"].num_classes
@@ -53,14 +54,21 @@ class Dataset:
                 self.validation_split = self.test_split
                 self.validation_examples = self.test_examples
 
-    def load_split(self, split):
-        return tfds.load(name=self.dataset_name, split=split, data_dir=self.data_dir)
+    def load_split(self, split, shuffle=True):
+        return tfds.load(
+            name=self.dataset_name,
+            split=split,
+            data_dir=self.data_dir,
+            decoders={"image": tfds.decode.SkipDecoding()},
+            as_dataset_kwargs={"shuffle_files": shuffle},
+        )
 
     def map_fn(self, data, training=False):
+        image = self.info.features["image"].decode_example(data["image"])
         if "training" in inspect.getfullargspec(self.preprocess_fn).args:
-            image = self.preprocess_fn(data["image"], training=training)
+            image = self.preprocess_fn(image, training=training)
         else:
-            image = self.preprocess_fn(data["image"])
+            image = self.preprocess_fn(image)
         label = tf.one_hot(data["label"], self.num_classes)
         return image, label
 
@@ -104,11 +112,15 @@ class Dataset:
         )
 
     def validation_data(self, batch_size):
-        dataset = self.maybe_cache(self.load_split(self.validation_split), "eval")
+        dataset = self.maybe_cache(
+            self.load_split(self.validation_split, shuffle=False), "eval"
+        )
         return self._get_eval_data(dataset, batch_size)
 
     def test_data(self, batch_size):
-        dataset = self.maybe_cache(self.load_split(self.test_split), "test")
+        dataset = self.maybe_cache(
+            self.load_split(self.test_split, shuffle=False), "test"
+        )
         return self._get_eval_data(dataset, batch_size)
 
     def _get_eval_data(self, dataset, batch_size):

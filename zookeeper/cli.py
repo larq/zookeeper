@@ -166,7 +166,7 @@ def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     set = registry.get_dataset(dataset, preprocess_fn, data_dir=data_dir)
-    figs = data_vis.plot_all_examples(set.load_split(set.train_split), set.map_fn)
+    figs = data_vis.plot_all_examples(set)
     for fig, filename in zip(figs, ("raw", "train", "eval")):
         fig.savefig(f"{output_dir.joinpath(filename).absolute()}.{format}")
 

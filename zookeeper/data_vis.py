@@ -27,8 +27,11 @@ def plot_examples(dataset):
     return fig
 
 
-def plot_all_examples(dataset, map_fn):
-    raw = plot_examples(dataset.map(lambda feat: feat["image"]))
-    train = plot_examples(dataset.map(lambda feat: map_fn(feat, training=True)[0]))
-    eval = plot_examples(dataset.map(lambda feat: map_fn(feat)[0]))
+def plot_all_examples(set):
+    dataset = set.load_split(set.train_split, shuffle=False)
+    decoder = set.info.features["image"].decode_example
+
+    raw = plot_examples(dataset.map(lambda feat: decoder(feat["image"])))
+    train = plot_examples(dataset.map(lambda feat: set.map_fn(feat, training=True)[0]))
+    eval = plot_examples(dataset.map(lambda feat: set.map_fn(feat)[0]))
     return raw, train, eval
