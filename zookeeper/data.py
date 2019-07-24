@@ -14,13 +14,15 @@ class Dataset:
         use_val_split=False,
         cache_dir=None,
         data_dir=None,
+        version=None,
     ):
         self.dataset_name = dataset_name
         self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
         self.cache_dir = cache_dir
+        self.version = version
 
-        dataset_builder = tfds.builder(dataset_name)
+        dataset_builder = tfds.builder(self.dataset_name_str)
         self.info = dataset_builder.info
         splits = self.info.splits
         features = self.info.features
@@ -54,9 +56,15 @@ class Dataset:
                 self.validation_split = self.test_split
                 self.validation_examples = self.test_examples
 
+    @property
+    def dataset_name_str(self):
+        return (
+            f"{self.dataset_name}:{self.version}" if self.version else self.dataset_name
+        )
+
     def load_split(self, split, shuffle=True):
         return tfds.load(
-            name=self.dataset_name,
+            name=self.dataset_name_str,
             split=split,
             data_dir=self.data_dir,
             decoders={"image": tfds.decode.SkipDecoding()},
@@ -82,7 +90,7 @@ class Dataset:
         for i in range(3):
             cache_dir = os.path.join(
                 self.cache_dir,
-                self.dataset_name if i == 0 else f"{self.dataset_name}_{i}",
+                self.dataset_name_str if i == 0 else f"{self.dataset_name_str}_{i}",
             )
             if not glob.glob(f"{cache_dir}/*.lockfile"):
                 os.makedirs(cache_dir, exist_ok=True)

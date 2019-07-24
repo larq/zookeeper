@@ -46,6 +46,12 @@ def build_train(preload=None):
             help="A directory on the filesystem to use for caching the dataset. If `--data-cache=memory`, the dataset will be cached in memory.",
         )
         @click.option(
+            "--dataset-version",
+            "dataset_version",
+            type=str,
+            help="The version of the TensorFlow dataset. See https://github.com/tensorflow/datasets/blob/master/docs/datasets_versioning.md",
+        )
+        @click.option(
             "--output-prefix",
             default=os.path.expanduser("~/zookeeper-logs"),
             help="Directory prefix used to save model checkpoints and logs.",
@@ -70,6 +76,7 @@ def build_train(preload=None):
             hparams_str,
             data_dir,
             data_cache,
+            dataset_version,
             output_prefix,
             output_dir,
             validationset,
@@ -87,6 +94,7 @@ def build_train(preload=None):
                 use_val_split=validationset,
                 cache_dir=data_cache,
                 data_dir=data_dir,
+                version=dataset_version,
             )
             build_model = registry.get_model_function(model_name)
             hparams = registry.get_hparams(model_name, hparams_set)
