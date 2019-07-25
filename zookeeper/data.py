@@ -6,18 +6,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
-def _with_options(dataset):
-    """Applies optimization options from tfds-nightly to given dataset.
-    """
-    options = tf.data.Options()
-    options.experimental_threading.max_intra_op_parallelism = 1
-    options.experimental_threading.private_threadpool_size = 16
-    options.experimental_optimization.apply_default_optimizations = True
-    options.experimental_optimization.map_fusion = True
-    options.experimental_optimization.map_parallelization = True
-    return dataset.with_options(options)
-
-
 class Dataset:
     def __init__(
         self,
@@ -26,20 +14,23 @@ class Dataset:
         use_val_split=False,
         cache_dir=None,
         data_dir=None,
+        version=None,
     ):
         self.dataset_name = dataset_name
         self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
         self.cache_dir = cache_dir
+        self.version = version
 
-        dataset_builder = tfds.builder(dataset_name)
-        splits = dataset_builder.info.splits
-        features = dataset_builder.info.features
+        dataset_builder = tfds.builder(self.dataset_name_str)
+        self.info = dataset_builder.info
+        splits = self.info.splits
+        features = self.info.features
         if tfds.Split.TRAIN not in splits:
             raise ValueError("To train we require a train split in the dataset.")
         if tfds.Split.TEST not in splits and tfds.Split.VALIDATION not in splits:
             raise ValueError("We require a test or validation split in the dataset.")
-        if not {"image", "label"} <= set(dataset_builder.info.supervised_keys or []):
+        if not {"image", "label"} <= set(self.info.supervised_keys or []):
             raise NotImplementedError("We currently only support image classification")
 
         self.num_classes = features["label"].num_classes
@@ -65,14 +56,27 @@ class Dataset:
                 self.validation_split = self.test_split
                 self.validation_examples = self.test_examples
 
-    def load_split(self, split):
-        return tfds.load(name=self.dataset_name, split=split, data_dir=self.data_dir)
+    @property
+    def dataset_name_str(self):
+        return (
+            f"{self.dataset_name}:{self.version}" if self.version else self.dataset_name
+        )
+
+    def load_split(self, split, shuffle=True):
+        return tfds.load(
+            name=self.dataset_name_str,
+            split=split,
+            data_dir=self.data_dir,
+            decoders={"image": tfds.decode.SkipDecoding()},
+            as_dataset_kwargs={"shuffle_files": shuffle},
+        )
 
     def map_fn(self, data, training=False):
+        image = self.info.features["image"].decode_example(data["image"])
         if "training" in inspect.getfullargspec(self.preprocess_fn).args:
-            image = self.preprocess_fn(data["image"], training=training)
+            image = self.preprocess_fn(image, training=training)
         else:
-            image = self.preprocess_fn(data["image"])
+            image = self.preprocess_fn(image)
         label = tf.one_hot(data["label"], self.num_classes)
         return image, label
 
@@ -86,7 +90,7 @@ class Dataset:
         for i in range(3):
             cache_dir = os.path.join(
                 self.cache_dir,
-                self.dataset_name if i == 0 else f"{self.dataset_name}_{i}",
+                self.dataset_name_str if i == 0 else f"{self.dataset_name_str}_{i}",
             )
             if not glob.glob(f"{cache_dir}/*.lockfile"):
                 os.makedirs(cache_dir, exist_ok=True)
@@ -104,7 +108,7 @@ class Dataset:
 
     def train_data(self, batch_size):
         return (
-            self.maybe_cache(_with_options(self.load_split(self.train_split)), "train")
+            self.maybe_cache(self.load_split(self.train_split), "train")
             .shuffle(10 * batch_size)
             .repeat()
             .map(
@@ -112,21 +116,24 @@ class Dataset:
                 num_parallel_calls=tf.data.experimental.AUTOTUNE,
             )
             .batch(batch_size)
-            .prefetch(tf.data.experimental.AUTOTUNE)
+            .prefetch(1)
         )
 
     def validation_data(self, batch_size):
-        dataset = self.maybe_cache(self.load_split(self.validation_split), "eval")
+        dataset = self.maybe_cache(
+            self.load_split(self.validation_split, shuffle=False), "eval"
+        )
         return self._get_eval_data(dataset, batch_size)
 
     def test_data(self, batch_size):
-        dataset = self.maybe_cache(self.load_split(self.test_split), "test")
+        dataset = self.maybe_cache(
+            self.load_split(self.test_split, shuffle=False), "test"
+        )
         return self._get_eval_data(dataset, batch_size)
 
     def _get_eval_data(self, dataset, batch_size):
         return (
-            _with_options(dataset)
-            .repeat()
+            dataset.repeat()
             .map(self.map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .batch(batch_size)
             .prefetch(1)

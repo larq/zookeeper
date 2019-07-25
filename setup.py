@@ -22,7 +22,7 @@ setup(
         "click>=7.0",
         "click-completion>=0.5.1",
         "matplotlib>=3.0.3",
-        "tensorflow-datasets>=1.0.2",
+        "tensorflow-datasets>=1.1.0",
     ],
     extras_require={
         "tensorflow": ["tensorflow>=1.13.1"],
