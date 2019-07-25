@@ -19,7 +19,7 @@ jobs:
         Python37_TF2:
           python.version: "3.7"
           tensorflow.version: "2.0.0-beta1"
-          pytest.args: "--cov=larq --cov-report=html --cov-config=.coveragerc"
+          pytest.args: "--cov=zookeeper --cov-report=html --cov-config=.coveragerc"
 
     steps:
       - task: UsePythonVersion@0
