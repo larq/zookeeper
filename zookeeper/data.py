@@ -72,13 +72,18 @@ class Dataset:
         )
 
     def map_fn(self, data, training=False):
-        image = self.info.features["image"].decode_example(data["image"])
-        if "training" in inspect.getfullargspec(self.preprocess_fn).args:
-            image = self.preprocess_fn(image, training=training)
+        args = inspect.getfullargspec(self.preprocess_fn).args
+        image_or_bytes = (
+            data["image"]
+            if "bytes" in args
+            else self.info.features["image"].decode_example(data["image"])
+        )
+        if "training" in args:
+            image = self.preprocess_fn(image_or_bytes, training=training)
         else:
-            image = self.preprocess_fn(image)
-        label = tf.one_hot(data["label"], self.num_classes)
-        return image, label
+            image = self.preprocess_fn(image_or_bytes)
+
+        return image, tf.one_hot(data["label"], self.num_classes)
 
     def get_cache_path(self, split_name):
         if self.cache_dir is None:
