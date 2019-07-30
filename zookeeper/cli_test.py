@@ -3,11 +3,17 @@ from click.testing import CliRunner
 import click
 from unittest import mock
 from os import path
+import tensorflow as tf
 
 
 @registry.register_preprocess("mnist")
-def default(image):
-    return image
+def default(image_tensor):
+    return image_tensor
+
+
+@registry.register_preprocess("mnist")
+def raw(image_bytes):
+    return tf.image.decode_image(image_bytes)
 
 
 @registry.register_model
@@ -96,6 +102,8 @@ def test_cli(tmp_path):
             "--dataset",
             "mnist",
             "--validationset",
+            "--preprocess-fn",
+            "raw",
         ],
     )
     assert result.exit_code == 0
