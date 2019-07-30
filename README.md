@@ -31,8 +31,8 @@ import tensorflow as tf
 from zookeeper import cli, build_train, HParams, registry
 
 @registry.register_preprocess("mnist")
-def default(image, training=False):
-    return tf.cast(image, dtype=tf.float32) / 255
+def default(image_tensor, training=False):
+    return tf.cast(image_tensor, dtype=tf.float32) / 255
 ```
 
 #### Models

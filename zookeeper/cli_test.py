@@ -7,13 +7,13 @@ import tensorflow as tf
 
 
 @registry.register_preprocess("mnist")
-def default(image):
-    return image
+def default(image_tensor):
+    return image_tensor
 
 
 @registry.register_preprocess("mnist")
-def raw(bytes):
-    return tf.image.decode_image(bytes)
+def raw(image_bytes):
+    return tf.image.decode_image(image_bytes)
 
 
 @registry.register_model

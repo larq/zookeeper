@@ -3,8 +3,8 @@ import tensorflow as tf
 
 
 @registry.register_preprocess("mnist")
-def default(image):
-    return tf.cast(image, dtype=tf.float32) / 255
+def default(image_tensor):
+    return tf.cast(image_tensor, dtype=tf.float32) / 255
 
 
 @registry.register_model

@@ -75,7 +75,7 @@ class Dataset:
         args = inspect.getfullargspec(self.preprocess_fn).args
         image_or_bytes = (
             data["image"]
-            if "bytes" in args
+            if "image_bytes" == args[0]
             else self.info.features["image"].decode_example(data["image"])
         )
         if "training" in args:
