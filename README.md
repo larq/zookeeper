@@ -7,7 +7,7 @@ A small library for managing deep learning models, hyper parameters and datasets
 ## Getting Started
 
 Zookeeper allows you to build command line interfaces for training deep learning models with very little boiler plate using [click](https://click.palletsprojects.com/) and [TensorFlow Datasets](https://www.tensorflow.org/datasets/). It helps you structure your machine learning projects in a framework agnostic and effective way.
-Zookeeper is heavily inspired by [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor) and [Fairseq](https://github.com/pytorch/fairseq/) but is designed to be used as a library making it lightweight and very flexible. Currently zookeeper is limited to image classification tasks but we are working on making it useful for other tasks as well.
+Zookeeper is heavily inspired by [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor) and [Fairseq](https://github.com/pytorch/fairseq/) but is designed to be used as a library making it lightweight and very flexible.
 
 ### Installation
 
@@ -23,7 +23,7 @@ Zookeeper keeps track of data preprocessing, models and hyperparameters to allow
 #### Datasets and Preprocessing
 
 TensorFlow Datasets provides [many popular datasets](https://www.tensorflow.org/datasets/datasets) that can be downloaded automatically.
-In the following we will use [MNIST](http://yann.lecun.com/exdb/mnist) and define a `default` preprocessing for the images that scales the image to `[0, 1]`:
+In the following we will use [MNIST](http://yann.lecun.com/exdb/mnist) and define a `default` preprocessing for the images that scales the image to `[0, 1]` and uses one-hot encoding for the class labels:
 
 ```python
 import tensorflow as tf
