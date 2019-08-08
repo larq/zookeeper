@@ -27,12 +27,27 @@ In the following we will use [MNIST](http://yann.lecun.com/exdb/mnist) and defin
 
 ```python
 import tensorflow as tf
+from zookeeper import cli, build_train, HParams, registry, Preprocessing
 
-from zookeeper import cli, build_train, HParams, registry
+class ImageClassification(Preprocessing):
+    @property
+    def kwargs(self):
+        return {
+            "input_shape": self.features["image"].shape,
+            "num_classes": self.features["label"].num_classes,
+        }
+
+    def inputs(self, data):
+        return tf.cast(data["image"], tf.float32)
+
+    def outputs(self, data):
+        return tf.one_hot(data["label"], self.features["label"].num_classes)
+
 
 @registry.register_preprocess("mnist")
-def default(image_tensor, training=False):
-    return tf.cast(image_tensor, dtype=tf.float32) / 255
+class default(ImageClassification):
+    def inputs(self, data):
+        return super().inputs(data) / 255
 ```
 
 #### Models
@@ -41,14 +56,11 @@ Next we will register a model called `cnn`. We will use the [Keras API](https://
 
 ```python
 @registry.register_model
-def cnn(hp, dataset):
+def cnn(hp, input_shape, num_classes):
     return tf.keras.models.Sequential(
         [
             tf.keras.layers.Conv2D(
-                hp.filters[0],
-                (3, 3),
-                activation=hp.activation,
-                input_shape=dataset.input_shape,
+                hp.filters[0], (3, 3), activation=hp.activation, input_shape=input_shape
             ),
             tf.keras.layers.MaxPooling2D((2, 2)),
             tf.keras.layers.Conv2D(hp.filters[1], (3, 3), activation=hp.activation),
@@ -56,7 +68,7 @@ def cnn(hp, dataset):
             tf.keras.layers.Conv2D(hp.filters[2], (3, 3), activation=hp.activation),
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(hp.filters[3], activation=hp.activation),
-            tf.keras.layers.Dense(dataset.num_classes, activation="softmax"),
+            tf.keras.layers.Dense(num_classes, activation="softmax"),
         ]
     )
 ```
@@ -87,7 +99,7 @@ To train the models registered above we will need to write a custom training loo
 @build_train()
 def train(build_model, dataset, hparams, output_dir):
     """Start model training."""
-    model = build_model(hparams, dataset)
+    model = build_model(hparams, **dataset.preprocessing.kwargs)
     model.compile(
         optimizer=hparams.optimizer,
         loss="categorical_crossentropy",
