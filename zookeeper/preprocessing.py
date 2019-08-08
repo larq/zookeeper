@@ -5,9 +5,9 @@ class Preprocessing(abc.ABC):
     """An abstract class to be used to define data preprocessing.
 
     We define a neural network to be a mapping between an input and an output, hence we
-    define to abstract methods, an input (e.g the image for image classification), and
+    define two abstract methods, an input (e.g the image for image classification), and
     an output (e.g the class label for image classification). We also define decoders,
-    which allows use to customize the decoding, and kwargs, which allows one to pass
+    which allows use to customize the decoding, and kwargs, which allows us to pass
     information from the preprocessing to the model (e.g input size.)
 
     # Arguments
@@ -36,7 +36,7 @@ class Preprocessing(abc.ABC):
 
         # Arguments
         data: A dictionary of type {feature_name: Tensor}
-        training: A optional `boolean` to define if preprocessing is called during training.
+        training: An optional `boolean` to define if preprocessing is called during training.
         """
         raise NotImplementedError("Must be implemented in subclasses.")
 
@@ -48,6 +48,6 @@ class Preprocessing(abc.ABC):
 
         # Arguments
         data: A dictionary of type {feature_name: Tensor}
-        training: A optional `boolean` to define if preprocessing is called during training.
+        training: An optional `boolean` to define if preprocessing is called during training.
         """
         raise NotImplementedError("Must be implemented in subclasses.")
