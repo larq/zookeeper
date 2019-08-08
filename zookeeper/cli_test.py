@@ -24,7 +24,8 @@ class ImageClassification(Preprocessing):
 
 @registry.register_preprocess("mnist")
 class default(ImageClassification):
-    pass
+    def inputs(self, data):
+        return super().inputs(data) / 255
 
 
 @registry.register_preprocess("mnist")
