@@ -1,5 +1,6 @@
 import tensorflow_datasets as tfds
 from zookeeper.data import Dataset
+from zookeeper.preprocessing import Preprocessing
 
 MODEL_REGISTRY = {}
 HPARAMS_REGISTRY = {}
@@ -44,24 +45,22 @@ class HParamsNotFoundError(ValueError):
         ValueError.__init__(self, err)
 
 
-def register_preprocess(dataset_name, input_shape=None):
-    def register_preprocess_fn(fn):
-        if not callable(fn):
-            raise ValueError("Preprocess function must be callable")
-        name = fn.__name__
+def register_preprocess(dataset_name):
+    def register_preprocess_cls(cls):
+        if not issubclass(cls, Preprocessing):
+            raise ValueError("Preprocess must be a subclass of zookeeper.Preprocessing")
+        name = cls.__name__
         if dataset_name not in DATA_REGISTRY:
             raise DatasetNotFoundError(dataset_name)
-        data_preprocess_fns = DATA_REGISTRY[dataset_name]
-        if name in data_preprocess_fns:
+        data_preprocess_clss = DATA_REGISTRY[dataset_name]
+        if name in data_preprocess_clss:
             raise ValueError(
                 f"Cannot register duplicate preprocessing ({name}) for dataset ({dataset_name})"
             )
-        if input_shape:
-            setattr(fn, "input_shape", input_shape)
-        data_preprocess_fns[name] = fn
-        return fn
+        data_preprocess_clss[name] = cls
+        return cls
 
-    return register_preprocess_fn
+    return register_preprocess_cls
 
 
 def register_model(model):

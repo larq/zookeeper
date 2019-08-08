@@ -6,37 +6,36 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
+def pass_training_kwarg(function, training=False):
+    if "training" in inspect.getfullargspec(function).args:
+        return functools.partial(function, training=training)
+    return function
+
+
 class Dataset:
     def __init__(
         self,
         dataset_name,
-        preprocess_fn,
+        preprocess_cls,
         use_val_split=False,
         cache_dir=None,
         data_dir=None,
         version=None,
     ):
         self.dataset_name = dataset_name
-        self.preprocess_fn = preprocess_fn
         self.data_dir = data_dir
         self.cache_dir = cache_dir
         self.version = version
 
-        dataset_builder = tfds.builder(self.dataset_name_str)
-        self.info = dataset_builder.info
+        self.info = tfds.builder(self.dataset_name_str).info
         splits = self.info.splits
-        features = self.info.features
+        self.preprocessing = preprocess_cls(features=self.info.features)
+
         if tfds.Split.TRAIN not in splits:
             raise ValueError("To train we require a train split in the dataset.")
         if tfds.Split.TEST not in splits and tfds.Split.VALIDATION not in splits:
             raise ValueError("We require a test or validation split in the dataset.")
-        if not {"image", "label"} <= set(self.info.supervised_keys or []):
-            raise NotImplementedError("We currently only support image classification")
 
-        self.num_classes = features["label"].num_classes
-        self.input_shape = getattr(
-            preprocess_fn, "input_shape", features["image"].shape
-        )
         self.train_split = tfds.Split.TRAIN
         self.train_examples = splits[self.train_split].num_examples
         if tfds.Split.TEST in splits:
@@ -67,23 +66,14 @@ class Dataset:
             name=self.dataset_name_str,
             split=split,
             data_dir=self.data_dir,
-            decoders={"image": tfds.decode.SkipDecoding()},
+            decoders=self.preprocessing.decoders,
             as_dataset_kwargs={"shuffle_files": shuffle},
         )
 
     def map_fn(self, data, training=False):
-        args = inspect.getfullargspec(self.preprocess_fn).args
-        image_or_bytes = (
-            data["image"]
-            if "image_bytes" == args[0]
-            else self.info.features["image"].decode_example(data["image"])
-        )
-        if "training" in args:
-            image = self.preprocess_fn(image_or_bytes, training=training)
-        else:
-            image = self.preprocess_fn(image_or_bytes)
-
-        return image, tf.one_hot(data["label"], self.num_classes)
+        input_fn = pass_training_kwarg(self.preprocessing.inputs, training=training)
+        output_fn = pass_training_kwarg(self.preprocessing.outputs, training=training)
+        return input_fn(data), output_fn(data)
 
     def get_cache_path(self, split_name):
         if self.cache_dir is None:

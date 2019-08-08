@@ -1,23 +1,43 @@
-from zookeeper import registry, cli, build_train, HParams, data
+from zookeeper import registry, cli, build_train, HParams, data, Preprocessing
 from click.testing import CliRunner
 import click
 from unittest import mock
 from os import path
 import tensorflow as tf
+import tensorflow_datasets as tfds
+
+
+class ImageClassification(Preprocessing):
+    @property
+    def kwargs(self):
+        return {
+            "input_shape": self.features["image"].shape,
+            "num_classes": self.features["label"].num_classes,
+        }
+
+    def inputs(self, data):
+        return tf.cast(data["image"], tf.float32)
+
+    def outputs(self, data):
+        return tf.one_hot(data["label"], self.features["label"].num_classes)
 
 
 @registry.register_preprocess("mnist")
-def default(image_tensor):
-    return image_tensor
+class default(ImageClassification):
+    def inputs(self, data):
+        return super().inputs(data) / 255
 
 
 @registry.register_preprocess("mnist")
-def raw(image_bytes):
-    return tf.image.decode_image(image_bytes)
+class raw(ImageClassification):
+    decoders = {"image": tfds.decode.SkipDecoding()}
+
+    def inputs(self, data):
+        return tf.cast(tf.image.decode_image(data["image"]), tf.float32)
 
 
 @registry.register_model
-def foo(hparams, dataset):
+def foo(hparams, **kwargs):
     return "foo-model"
 
 
@@ -36,7 +56,7 @@ def train(build_model, dataset, hparams, output_dir, custom_opt):
     assert isinstance(output_dir, str)
     assert isinstance(custom_opt, str)
 
-    model = build_model(hparams, dataset)
+    model = build_model(hparams, **dataset.preprocessing.kwargs)
     assert model == "foo-model"
     assert dataset.dataset_name == "mnist"
     assert dataset.train_examples == 60000
@@ -53,7 +73,7 @@ def train_val(build_model, dataset, hparams, output_dir):
     assert isinstance(dataset, data.Dataset)
     assert isinstance(output_dir, str)
 
-    model = build_model(hparams, dataset)
+    model = build_model(hparams, **dataset.preprocessing.kwargs)
     assert model == "foo-model"
     assert dataset.dataset_name == "mnist"
     assert dataset.train_examples == 54000

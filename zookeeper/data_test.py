@@ -1,11 +1,19 @@
 import pytest
 from unittest import mock
-from zookeeper import data
+from zookeeper import data, Preprocessing
+
+
+class MockPreprocessing(Preprocessing):
+    def inputs(self, data):
+        return data["image"]
+
+    def outputs(self, data):
+        return data["label"]
 
 
 @mock.patch("os.makedirs")
 def test_cache_dir(os_makedirs):
-    dataset = data.Dataset("mnist", lambda x: x)
+    dataset = data.Dataset("mnist", MockPreprocessing)
     assert dataset.get_cache_path("train") == None
 
     dataset.cache_dir = "memory"
