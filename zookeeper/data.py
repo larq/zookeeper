@@ -1,15 +1,8 @@
 import functools
 import glob
-import inspect
 import os
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
-
-def pass_training_kwarg(function, training=False):
-    if "training" in inspect.getfullargspec(function).args:
-        return functools.partial(function, training=training)
-    return function
 
 
 class Dataset:
@@ -70,11 +63,6 @@ class Dataset:
             as_dataset_kwargs={"shuffle_files": shuffle},
         )
 
-    def map_fn(self, data, training=False):
-        input_fn = pass_training_kwarg(self.preprocessing.inputs, training=training)
-        output_fn = pass_training_kwarg(self.preprocessing.outputs, training=training)
-        return input_fn(data), output_fn(data)
-
     def get_cache_path(self, split_name):
         if self.cache_dir is None:
             return None
@@ -107,7 +95,7 @@ class Dataset:
             .shuffle(10 * batch_size)
             .repeat()
             .map(
-                functools.partial(self.map_fn, training=True),
+                functools.partial(self.preprocessing, training=True),
                 num_parallel_calls=tf.data.experimental.AUTOTUNE,
             )
             .batch(batch_size)
@@ -129,7 +117,7 @@ class Dataset:
     def _get_eval_data(self, dataset, batch_size):
         return (
             dataset.repeat()
-            .map(self.map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            .map(self.preprocessing, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .batch(batch_size)
             .prefetch(1)
         )

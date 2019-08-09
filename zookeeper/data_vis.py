@@ -31,6 +31,8 @@ def plot_all_examples(set):
     dataset = set.load_split(set.train_split, shuffle=False)
 
     raw = plot_examples(dataset.map(lambda feat: feat["image"]))
-    train = plot_examples(dataset.map(lambda feat: set.map_fn(feat, training=True)[0]))
-    eval = plot_examples(dataset.map(lambda feat: set.map_fn(feat)[0]))
+    train = plot_examples(
+        dataset.map(lambda feat: set.preprocessing(feat, training=True)[0])
+    )
+    eval = plot_examples(dataset.map(lambda feat: set.preprocessing(feat)[0]))
     return raw, train, eval
