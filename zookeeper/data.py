@@ -20,7 +20,7 @@ class Dataset:
         self.cache_dir = cache_dir
         self.version = version
 
-        self.info = tfds.builder(self.dataset_name_str).info
+        self.info = tfds.builder(self.dataset_name_str, data_dir=data_dir).info
         splits = self.info.splits
         self.preprocessing = preprocess_cls(features=self.info.features)
 
