@@ -129,11 +129,6 @@ def test_cli(tmp_path):
     assert result.exit_code == 0
     assert result.output.splitlines()[-1] == "TESTS PASSED"
 
-    result = runner.invoke(cli, ["plot", "mnist", "--output-prefix", tmp_path])
-    output_path = tmp_path / "mnist" / "default"
-    assert result.exit_code == 0
-    assert len(list(output_path.iterdir())) == 3
-
 
 def test_cli_wrong_data():
     result = runner.invoke(
