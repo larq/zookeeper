@@ -152,34 +152,6 @@ def tensorboard(model, dataset, output_prefix, output_dir):
 
 
 @cli.command()
-@click.argument("dataset", type=str)
-@click.option(
-    "--preprocess-fn", default="default", help="Function used to preprocess dataset."
-)
-@click.option("--data-dir", type=str, help="Directory with training data.")
-@click.option(
-    "--output-prefix",
-    default=os.path.join(os.path.expanduser("~/zookeeper-logs"), "plots"),
-    help="Directory prefix used to save plots",
-)
-@click.option(
-    "--format", default="pdf", type=click.Choice(["png", "pdf", "ps", "eps", "svg"])
-)
-def plot(dataset, preprocess_fn, data_dir, output_prefix, format):
-    """Plot data examples."""
-    from pathlib import Path
-    from zookeeper import registry, data_vis
-
-    output_dir = Path(output_prefix).joinpath(dataset, preprocess_fn)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    set = registry.get_dataset(dataset, preprocess_fn, data_dir=data_dir)
-    figs = data_vis.plot_all_examples(set)
-    for fig, filename in zip(figs, ("raw", "train", "eval")):
-        fig.savefig(f"{output_dir.joinpath(filename).absolute()}.{format}")
-
-
-@cli.command()
 @click.option(
     "--append/--overwrite", help="Append the completion code to the file", default=None
 )
