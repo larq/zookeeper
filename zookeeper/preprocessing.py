@@ -67,6 +67,6 @@ class Preprocessing:
         # Returns
         A tuple of (inputs, outputs)
         """
-        input_fn = pass_training_kwarg(self.inputs)
-        output_fn = pass_training_kwarg(self.outputs)
+        input_fn = pass_training_kwarg(self.inputs, training=training)
+        output_fn = pass_training_kwarg(self.outputs, training=training)
         return input_fn(data), output_fn(data)
