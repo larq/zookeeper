@@ -58,6 +58,14 @@ class HParams(collections.abc.Mapping):
 
     _abc_methods = {"get", "items", "keys", "parse", "values"}
 
+    def __init__(self, **kwargs):
+        """Optionally use `kwargs` to override or set new hyperparameter values."""
+        for key, value in kwargs.items():
+            if self._is_hparam(key):
+                object.__setattr__(self, key, value)
+            else:
+                raise ValueError(f"Invalid hyperparameter name '{key}'.")
+
     def parse(self, value):
         """Override existing hyperparameter values, parsing new values from a string.
 

@@ -112,3 +112,20 @@ def test_str_nested(hyper_with_nested):
     )
 )"""
     assert click.unstyle(str(hyper_with_nested)) == output
+
+
+def test_init_kwargs(hyper):
+    new_hyper = hyper.__class__(foo="updated_foo", bar=-100, new_name="new_value")
+    # Updated
+    assert new_hyper.foo == "updated_foo"
+    assert new_hyper.bar == -100
+    assert new_hyper.barx2 == -200
+    # Added
+    assert new_hyper.new_name == "new_value"
+    # The same
+    assert new_hyper.baz == hyper.baz
+    # Invalid keys
+    with pytest.raises(ValueError):
+        new_hyper = hyper.__class__(_new_name="new_value")
+    with pytest.raises(ValueError):
+        new_hyper = hyper.__class__(parse=lambda x: x ** 2)
