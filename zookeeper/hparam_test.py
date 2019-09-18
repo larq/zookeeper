@@ -85,6 +85,7 @@ def test_repr(hyper):
     output = "Hyper(bar=0.5,bar_func=<callable>,barx2=1.0,baz=string,foo=[1, 2, 3])"
     assert repr(hyper) == output
 
+
 def test_repr_nested(hyper_with_nested):
     output = "Parent(a=4.9,b=some string,child=Child(c=-1.5,d=aeiou))"
     assert repr(hyper_with_nested) == output

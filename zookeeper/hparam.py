@@ -110,11 +110,16 @@ class HParams(collections.abc.Mapping):
         raise AttributeError("Hyperparameters are immutable, cannot assign to field.")
 
     def __str__(self):
-        params = f",\n{INDENT}".join([str_key_val(k, v) for k, v in sorted(self.items())])
+        params = f",\n{INDENT}".join(
+            [str_key_val(k, v) for k, v in sorted(self.items())]
+        )
         return f"{self.__class__.__name__}(\n{INDENT}{params}\n)"
 
     def __repr__(self):
         params = ",".join(
-            [str_key_val(k, v, color=False, single_line=True) for k, v in sorted(self.items())]
+            [
+                str_key_val(k, v, color=False, single_line=True)
+                for k, v in sorted(self.items())
+            ]
         )
         return f"{self.__class__.__name__}({params})"
