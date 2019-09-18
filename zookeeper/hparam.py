@@ -11,14 +11,21 @@ except ImportError:  # pragma: no cover
 
 SPLIT_REGEX = re.compile(r",?(\w+)=")
 
+INDENT = "    "
+
 
 def group(sequence):
     return zip(*[iter(sequence)] * 2)
 
 
-def str_key_val(key, value, color=True):
+def str_key_val(key, value, color=True, single_line=False):
     if callable(value):
         value = "<callable>"
+    if isinstance(value, HParams):
+        if single_line:
+            value = repr(value)
+        else:
+            value = f"\n{INDENT}".join(str(value).split("\n"))
     return f"{BLUE}{key}{RESET}={YELLOW}{value}{RESET}" if color else f"{key}={value}"
 
 
@@ -103,11 +110,11 @@ class HParams(collections.abc.Mapping):
         raise AttributeError("Hyperparameters are immutable, cannot assign to field.")
 
     def __str__(self):
-        params = ",\n    ".join([str_key_val(k, v) for k, v in sorted(self.items())])
-        return f"{self.__class__.__name__}(\n    {params}\n)"
+        params = f",\n{INDENT}".join([str_key_val(k, v) for k, v in sorted(self.items())])
+        return f"{self.__class__.__name__}(\n{INDENT}{params}\n)"
 
     def __repr__(self):
         params = ",".join(
-            [str_key_val(k, v, color=False) for k, v in sorted(self.items())]
+            [str_key_val(k, v, color=False, single_line=True) for k, v in sorted(self.items())]
         )
         return f"{self.__class__.__name__}({params})"

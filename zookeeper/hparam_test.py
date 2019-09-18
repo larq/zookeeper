@@ -22,6 +22,20 @@ def hyper():
     return Hyper()
 
 
+@pytest.fixture
+def hyper_with_nested():
+    class Child(HParams):
+        c = -1.5
+        d = "aeiou"
+
+    class Parent(HParams):
+        a = 4.9
+        b = "some string"
+        child = Child()
+
+    return Parent()
+
+
 def test_defaults(hyper):
     assert hyper.foo == [1, 2, 3]
     assert hyper.bar == 0.5
@@ -71,6 +85,10 @@ def test_repr(hyper):
     output = "Hyper(bar=0.5,bar_func=<callable>,barx2=1.0,baz=string,foo=[1, 2, 3])"
     assert repr(hyper) == output
 
+def test_repr_nested(hyper_with_nested):
+    output = "Parent(a=4.9,b=some string,child=Child(c=-1.5,d=aeiou))"
+    assert repr(hyper_with_nested) == output
+
 
 def test_str(hyper):
     output = """Hyper(
@@ -81,3 +99,15 @@ def test_str(hyper):
     foo=[1, 2, 3]
 )"""
     assert click.unstyle(str(hyper)) == output
+
+
+def test_str_nested(hyper_with_nested):
+    output = """Parent(
+    a=4.9,
+    b=some string,
+    child=Child(
+        c=-1.5,
+        d=aeiou
+    )
+)"""
+    assert click.unstyle(str(hyper_with_nested)) == output
