@@ -5,20 +5,21 @@ import click
 from zookeeper.hparam import HParams
 
 
+class Hyper(HParams):
+    foo = [1, 2, 3]
+    bar = 0.5
+    baz = "string"
+
+    @property
+    def barx2(self):
+        return self.bar * 2
+
+    def bar_func(self):
+        return self.bar
+
+
 @pytest.fixture
 def hyper():
-    class Hyper(HParams):
-        foo = [1, 2, 3]
-        bar = 0.5
-        baz = "string"
-
-        @property
-        def barx2(self):
-            return self.bar * 2
-
-        def bar_func(self):
-            return self.bar
-
     return Hyper()
 
 
@@ -115,7 +116,7 @@ def test_str_nested(hyper_with_nested):
 
 
 def test_init_kwargs(hyper):
-    new_hyper = hyper.__class__(foo="updated_foo", bar=-100, new_name="new_value")
+    new_hyper = Hyper(foo="updated_foo", bar=-100, new_name="new_value")
     # Updated
     assert new_hyper.foo == "updated_foo"
     assert new_hyper.bar == -100
@@ -126,6 +127,6 @@ def test_init_kwargs(hyper):
     assert new_hyper.baz == hyper.baz
     # Invalid keys
     with pytest.raises(ValueError):
-        new_hyper = hyper.__class__(_new_name="new_value")
+        new_hyper = Hyper(_new_name="new_value")
     with pytest.raises(ValueError):
-        new_hyper = hyper.__class__(parse=lambda x: x ** 2)
+        new_hyper = Hyper(parse=lambda x: x ** 2)
