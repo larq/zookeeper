@@ -18,7 +18,7 @@ jobs:
           tensorflow.version: "1.14.0"
         Python37_TF2:
           python.version: "3.7"
-          tensorflow.version: "2.0.0rc0"
+          tensorflow.version: "2.0.0"
           pytest.args: "--cov=zookeeper --cov-report=html --cov-config=.coveragerc"
 
     steps:
