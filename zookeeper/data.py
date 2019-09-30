@@ -22,7 +22,9 @@ class Dataset:
 
         self.info = tfds.builder(self.dataset_name_str, data_dir=data_dir).info
         splits = self.info.splits
-        self.preprocessing = preprocess_cls(features=self.info.features, dataset_name=self.dataset_name)
+        self.preprocessing = preprocess_cls(
+            features=self.info.features, dataset_name=self.dataset_name
+        )
 
         if tfds.Split.TRAIN not in splits:
             raise ValueError("To train we require a train split in the dataset.")
