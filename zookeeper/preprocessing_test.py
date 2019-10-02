@@ -21,7 +21,9 @@ class PreprocessingWithTraining(Preprocessing):
 
 
 def test_preprocessing_without_training_arg():
-    prepro = PreprocessingSimple()
+    prepro = PreprocessingSimple(dataset_name="test_name")
+    assert prepro.dataset_name == "test_name"
+
     prepro.inputs = Mock()
     prepro.outputs = Mock()
 
