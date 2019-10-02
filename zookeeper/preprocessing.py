@@ -19,6 +19,7 @@ class Preprocessing:
 
     # Arguments
     features: A [`tfds.features.FeaturesDict`](https://www.tensorflow.org/datasets/api_docs/python/tfds/features/FeaturesDict)
+    dataset_name: Optional `str` name of the dataset this class will be applied to. Useful for re-using the same Preprocessing class for different datasets with slight differences.
 
     # Properties
     - `decoders`: Nested `dict` of [`Decoder`](https://www.tensorflow.org/datasets/api_docs/python/tfds/decode/Decoder)
@@ -32,8 +33,9 @@ class Preprocessing:
     decoders = None
     kwargs = {}
 
-    def __init__(self, features=None):
+    def __init__(self, features=None, dataset_name=None):
         self.features = features
+        self.dataset_name = dataset_name
 
     def inputs(self, data, training):
         """A method to define preprocessing for inputs.
