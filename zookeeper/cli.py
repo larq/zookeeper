@@ -121,9 +121,13 @@ def build_train(preload=None):
 @cli.command()
 @click.argument("datasets", type=str, nargs=-1)
 @click.option("--data-dir", type=str, help="Directory with training data.")
-def prepare(datasets, data_dir):
+@click.option("--progressbar", default=False, help="Show tfds progressbar")
+def prepare(datasets, data_dir, progressbar):
     """Downloads and prepares datasets for reading."""
     import tensorflow_datasets as tfds
+
+    if not progressbar:
+        tfds.disable_progress_bar()
 
     for dataset in datasets:
         tfds.builder(dataset, data_dir=data_dir).download_and_prepare()
