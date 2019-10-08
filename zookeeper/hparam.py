@@ -57,6 +57,7 @@ class HParams(collections.abc.Mapping):
     """
 
     _abc_methods = {"get", "items", "keys", "parse", "values"}
+    _hidden_attributes = {}
 
     def __init__(self, **kwargs):
         """Optionally use `kwargs` to override or set new hyperparameter values."""
@@ -100,8 +101,15 @@ class HParams(collections.abc.Mapping):
     def _is_hparam(self, item):
         return item not in self._abc_methods and not item.startswith("_")
 
-    def __iter__(self):
-        return (item for item in self.__dir__() if self._is_hparam(item))
+    def __iter__(self, return_hidden=False):
+        """Prevent the ** operator from returning hidden properties, 
+        unless otherwise specified"""
+        return (
+            item
+            for item in self.__dir__()
+            if self._is_hparam(item)
+            and (return_hidden or not item in self._hidden_attributes)
+        )
 
     def __getitem__(self, item):
         try:

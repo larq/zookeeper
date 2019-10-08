@@ -10,6 +10,9 @@ class Hyper(HParams):
     bar = 0.5
     baz = "string"
 
+    hidden = "hidden_value"
+    _hidden_attributes = {"hidden"}
+
     @property
     def barx2(self):
         return self.bar * 2
@@ -130,3 +133,9 @@ def test_init_kwargs(hyper):
         new_hyper = Hyper(_new_name="new_value")
     with pytest.raises(ValueError):
         new_hyper = Hyper(parse=lambda x: x ** 2)
+
+
+def test_unpacking(hyper):
+    assert hyper.hidden == "hidden_value"
+    items = [item for item in hyper]
+    assert "hidden" not in items
