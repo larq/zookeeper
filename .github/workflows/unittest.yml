@@ -5,9 +5,6 @@ on: [push]
 jobs:
   tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        tf-version: [1.13.1, 1.14.0]
 
     steps:
       - uses: actions/checkout@v1
@@ -16,11 +13,9 @@ jobs:
         with:
           python-version: 3.7
       - name: Install dependencies
-        run: |
-          pip install tensorflow==${{matrix.tf-version}}
-          pip install -e .[test]
+        run: pip install -e .[test]
       - name: Test with pytest
-        run: pytest .
+        run: pytest . -vv
   coverage:
     runs-on: ubuntu-latest
     steps:
@@ -30,11 +25,9 @@ jobs:
         with:
           python-version: 3.6
       - name: Install dependencies
-        run: |
-          pip install tensorflow==2.0.0
-          pip install -e .[test]
+        run: pip install -e .[test]
       - name: Generate coverage report
-        run: pytest . --cov=zookeeper --cov-report=xml --cov-config=.coveragerc
+        run: pytest . --cov=zookeeper --cov-report=xml --cov-config=.coveragerc -vv
       - name: Upload coverage to Codecov
         run: curl -s https://codecov.io/bash | bash -s -- -t $token -f ./coverage.xml -F unittests
         env:
