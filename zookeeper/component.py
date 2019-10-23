@@ -130,7 +130,7 @@ class Component(ABC):
         annotations = {}
         for base_class in reversed(getmro(self.__class__)):
             annotations.update(getattr(base_class, "__annotations__", dict()))
-        annotations.update(getattr(self, "__annotations__", dict()))
+        annotations.update(getattr(self, "__annotations__", {}))
         return annotations
 
     def __init__(self, **kwargs):
