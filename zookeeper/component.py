@@ -129,7 +129,7 @@ class Component(ABC):
         # overriden.
         annotations = {}
         for base_class in reversed(getmro(self.__class__)):
-            annotations.update(getattr(base_class, "__annotations__", dict()))
+            annotations.update(getattr(base_class, "__annotations__", {}))
         annotations.update(getattr(self, "__annotations__", {}))
         return annotations
 
