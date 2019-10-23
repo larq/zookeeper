@@ -254,7 +254,7 @@ class Component(ABC):
             k_scoped_conf = {
                 a[len(f"{k}.") :]: b for a, b in conf.items() if a.startswith(f"{k}.")
             }
-            nested_conf = dict(non_scoped_conf, **k_scoped_conf)
+            nested_conf = {**non_scoped_conf, **k_scoped_conf}
             getattr(self, k).hydrate(
                 nested_conf,
                 parent=self,
