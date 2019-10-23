@@ -120,19 +120,25 @@ class Component(ABC):
     # The name of the component.
     __component_name__ = None
 
-    # The default `__annotations__` attribute does not include annotations of
-    # super classes, if applicable.
     @property
-    def __component_annotations__(self):
-        # Collect all annotations which apply to the class. Annotations aren't
-        # inherited, so we have to go through the MRO chain and collect them
-        # from all super classes, in reverse order so that they are correctly
-        # overriden.
-        annotations = {}
-        for base_class in reversed(getmro(self.__class__)):
-            annotations.update(getattr(base_class, "__annotations__", {}))
-        annotations.update(getattr(self, "__annotations__", {}))
-        return annotations
+    def annotations(self):
+        """
+        All annotations which apply to the class, including those inherited from
+        superclasses.
+
+        This property is computed once and cached.
+        """
+
+        if not hasattr(self, "_annotations"):
+            annotations = {}
+            # We have to go through the MRO chain and collect them in reverse
+            # order so that they are correctly overriden.
+            for base_class in reversed(getmro(self.__class__)):
+                annotations.update(getattr(base_class, "__annotations__", {}))
+            annotations.update(getattr(self, "__annotations__", {}))
+            self._annotations = annotations
+
+        return self._annotations
 
     def __init__(self, **kwargs):
         """
@@ -141,7 +147,7 @@ class Component(ABC):
         """
 
         for k, v in kwargs.items():
-            if k in self.__component_annotations__:
+            if k in self.annotations:
                 setattr(self, k, v)
             else:
                 raise ValueError(
@@ -179,7 +185,7 @@ class Component(ABC):
         non_component_annotations = []
         component_annotations = []
 
-        for k, v in self.__component_annotations__.items():
+        for k, v in self.annotations.items():
             # We have to be careful because `v` can be a `typing.Type` subclass
             # e.g. `typing.List[float]`.
             #
@@ -287,7 +293,7 @@ class Component(ABC):
         type (where possible).
         """
 
-        for name, annotated_type in self.__component_annotations__.items():
+        for name, annotated_type in self.annotations.items():
             if not hasattr(self, name):
                 raise ValueError(
                     f"No configuration value found for annotated parameter '{self.__component_name__}.{name}' of type '{annotated_type.__name__ if isinstance(annotated_type, type) else annotated_type}'."
@@ -306,7 +312,7 @@ class Component(ABC):
 
     def __str__(self):
         params = f",\n{INDENT}".join(
-            [str_key_val(k, getattr(self, k)) for k in self.__component_annotations__]
+            [str_key_val(k, getattr(self, k)) for k in self.annotations]
         )
         return f"{self.__class__.__name__}(\n{INDENT}{params}\n)"
 
@@ -314,7 +320,7 @@ class Component(ABC):
         params = ", ".join(
             [
                 str_key_val(k, getattr(self, k), color=False, single_line=True)
-                for k in self.__component_annotations__
+                for k in self.annotations
             ]
         )
         return f"{self.__class__.__name__}({params})"
