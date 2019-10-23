@@ -127,7 +127,7 @@ class Component(ABC):
         # inherited, so we have to go through the MRO chain and collect them
         # from all super classes, in reverse order so that they are correctly
         # overriden.
-        annotations = dict()
+        annotations = {}
         for base_class in reversed(getmro(self.__class__)):
             annotations.update(getattr(base_class, "__annotations__", dict()))
         annotations.update(getattr(self, "__annotations__", dict()))
