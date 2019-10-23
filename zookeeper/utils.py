@@ -7,7 +7,7 @@ from prompt_toolkit import print_formatted_text, prompt
 
 def get_concrete_subclasses(cls) -> Set[type]:
     """Return a set of all non-abstract classes which inherit from `cls`."""
-    subclasses = {} if isabstract(cls) else {cls}
+    subclasses = set([cls] if not isabstract(cls) else [])
     for s in cls.__subclasses__():
         if not isabstract(s):
             subclasses.add(s)

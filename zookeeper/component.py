@@ -48,11 +48,11 @@ class Component(ABC):
     Python objects or nested sub-components. These are declared with class-level
     Python type annotations, in the same way that elements of
     [dataclasses](https://docs.python.org/3/library/dataclasses.html) are
-    declared. After instantiation, components are 'hydrated' with a
+    declared. After instantiation, components are 'configured' with a
     configuration dictionary; this process automatically injects the correct
     parameters into the component and all subcomponents. Component parameters
     can have defaults set, either in the class definition or passed via
-    `__init__`, but configuration values passed to `hydrate` will always take
+    `__init__`, but configuration values passed to `configure` will always take
     precedence over these values.
 
     If a nested sub-component child declares a parameter with the same name as a
@@ -92,7 +92,7 @@ class Component(ABC):
 
 
     c = C()
-    c.hydrate({
+    c.configure({
         "x": 5,                     # (1)
         "b.x": 10,                  # (2)
         "b.a.x": 15,                # (3)
@@ -120,25 +120,9 @@ class Component(ABC):
     # The name of the component.
     __component_name__ = None
 
-    @property
-    def annotations(self):
-        """
-        All annotations which apply to the class, including those inherited from
-        superclasses.
-
-        This property is computed once and cached.
-        """
-
-        if not hasattr(self, "_annotations"):
-            annotations = {}
-            # We have to go through the MRO chain and collect them in reverse
-            # order so that they are correctly overriden.
-            for base_class in reversed(getmro(self.__class__)):
-                annotations.update(getattr(base_class, "__annotations__", {}))
-            annotations.update(getattr(self, "__annotations__", {}))
-            self._annotations = annotations
-
-        return self._annotations
+    # All annotations which apply to the class, including those inherited from
+    # superclasses. This is populated in `__init__`.
+    __component_annotations__ = {}
 
     def __init__(self, **kwargs):
         """
@@ -146,8 +130,18 @@ class Component(ABC):
         annotations. The passed values will be set on the instance.
         """
 
+        # Populate `self.__component_annotations__` with all annotations set on
+        # this class and all superclasses. We have to go through the MRO chain
+        # and collect them in reverse order so that they are correctly
+        # overriden.
+        annotations = {}
+        for base_class in reversed(getmro(self.__class__)):
+            annotations.update(getattr(base_class, "__annotations__", {}))
+        annotations.update(getattr(self, "__annotations__", {}))
+        self.__component_annotations__ = annotations
+
         for k, v in kwargs.items():
-            if k in self.annotations:
+            if k in self.__component_annotations__:
                 setattr(self, k, v)
             else:
                 raise ValueError(
@@ -166,16 +160,37 @@ class Component(ABC):
                 "and sets the corresponding attribute values on the instance."
             )
 
-    def hydrate(self, conf, parent=None, name=None, interactive=False):
+    def __setattr__(self, name, value):
+        # Type-check annotated values.
+        if name in self.__component_annotations__:
+            annotation = self.__component_annotations__[name]
+            check_type(name, value, annotation)
+        super().__setattr__(name, value)
+
+    def __str__(self):
+        params = f",\n{INDENT}".join(
+            [str_key_val(k, getattr(self, k)) for k in self.__component_annotations__]
+        )
+        return f"{self.__class__.__name__}(\n{INDENT}{params}\n)"
+
+    def __repr__(self):
+        params = ", ".join(
+            [
+                str_key_val(k, getattr(self, k), color=False, single_line=True)
+                for k in self.__component_annotations__
+            ]
+        )
+        return f"{self.__class__.__name__}({params})"
+
+    def configure(self, conf, name=None, interactive=False):
         """
         Configure the component instance with parameters from the `conf` dict.
 
         Configuration passed through `conf` takes precedence over and will
-        overwrite any values already set on the instance - either class default
+        overwrite any values already set on the instance - either class defaults
         or those passed via `__init__`.
         """
 
-        self.__component_parent__ = parent
         self.__component_name__ = name or self.__class__.__name__
 
         # Divide the annotations into those which are and those which are not
@@ -185,7 +200,7 @@ class Component(ABC):
         non_component_annotations = []
         component_annotations = []
 
-        for k, v in self.annotations.items():
+        for k, v in self.__component_annotations__.items():
             # We have to be careful because `v` can be a `typing.Type` subclass
             # e.g. `typing.List[float]`.
             #
@@ -201,35 +216,43 @@ class Component(ABC):
 
         # Process non-component annotations
         for k, v in non_component_annotations:
+            param_name = f"{self.__component_name__}.{k}"
+            param_type_name = v.__name__ if isclass(v) else v
+
             # The value from the `conf` dict takes priority.
             if k in conf:
                 param_value = conf[k]
                 setattr(self, k, param_value)
+
             # If there's no config value but the value is already set on the
             # instance, add that value to the config so that it can get picked
             # up in child components.
             elif hasattr(self, k):
                 conf[k] = getattr(self, k)
+
             # If we are running interactively, prompt for the missing value. Add
             # it to the configuration so that it gets passed to any children.
             elif interactive:
-                param_name = f"{self.__component_name__}.{k}"
                 param_value = promt_for_param_value(param_name, v)
                 setattr(self, k, param_value)
                 conf[k] = param_value
 
+            # If we're not running interactively and there's no value anywhere,
+            # raise an error.
+            else:
+                raise ValueError(
+                    f"No configuration value found for annotated parameter '{param_name}' of type '{param_type_name}'."
+                )
+
         # Process nested component annotations
         for k, v in component_annotations:
+            param_name = f"{self.__component_name__}.{k}"
+            param_type_name = v.__name__
+            concrete_subclasses = get_concrete_subclasses(v)
+
             # The value from the `conf` dict takes priority.
             if k in conf:
-                instance = conf["k"]
-                # Check that the configuration instance has the correct type.
-                # `isinstance` here is safe because we know `v` subclasses
-                # `Component`.
-                if not isinstance(instance, v):
-                    raise ValueError(
-                        f"The configured value '{instance}' for annotated parameter '{self.__component_name__}.{k}' must be an instance of '{v.__name__}'."
-                    )
+                instance = conf[k]
                 setattr(self, k, instance)
 
             # If there's no config value but the value is set on the object, add
@@ -238,32 +261,44 @@ class Component(ABC):
             elif hasattr(self, k):
                 conf[k] = getattr(self, k)
 
-            # If there's only one concrete subclass of `v`, instantiate an
+            # If there is no concrete subclass of `v`, raise an error.
+            elif len(concrete_subclasses) == 0:
+                raise ValueError(
+                    f"There is no defined, non-abstract class that can be instantiated to satisfy the annotated parameter '{param_name}' of type '{param_type_name}'."
+                )
+
+            # If there is only one concrete subclass of `v`, instantiate an
             # instance of that class.
-            elif len(get_concrete_subclasses(v)) == 1:
-                component_cls = list(get_concrete_subclasses(v))[0]
+            elif len(concrete_subclasses) == 1:
+                component_cls = list(concrete_subclasses)[0]
                 print_formatted_text(
-                    f"{component_cls} is the only concrete component class that satisfies the type of the annotated parameter '{self.__component_name__}.{k}'. Using an instance of this class by default."
+                    f"{component_cls} is the only concrete component class that satisfies the type of the annotated parameter '{param_name}'. Using an instance of this class by default."
                 )
                 # This is safe because we ban overriding `__init__`.
                 instance = component_cls()
                 setattr(self, k, instance)
                 conf[k] = instance
 
-            # If we are running interactively and there's more than one concrete
+            # If we are running interactively and there is more than one concrete
             # subclass of `v`, prompt for the concrete subclass to instantiate.
             # Add the instance to the configuation so that is can get passed to
             # any children.
-            elif interactive and len(get_concrete_subclasses(v)) > 1:
-                component_cls = prompt_for_component(
-                    f"{self.__component_name__}.{k}", v
-                )
+            elif interactive:
+                component_cls = prompt_for_component(param_name, v)
                 # The is safe because we ban overriding `__init__`.
                 instance = component_cls()
                 setattr(self, k, instance)
                 conf[k] = instance
 
-            # Hydrate the sub-component. The configuration we use consists of
+            # If we're not running interactively and there is more than one
+            # concrete subclass of `v`, raise an error.
+            else:
+                raise ValueError(
+                    f"Annotated parameter '{param_name}' of type '{param_type_name}' has no configured value. Please configure '{param_name}' with one of the following concrete subclasses of '{param_type_name}': "
+                    + str(list(concrete_subclasses))
+                )
+
+            # Configure the sub-component. The configuration we use consists of
             # all non-scoped keys and any keys scoped to `k`, where the keys
             # scoped to `k` override the non-scoped keys.
             non_scoped_conf = {a: b for a, b in conf.items() if "." not in a}
@@ -271,11 +306,8 @@ class Component(ABC):
                 a[len(f"{k}.") :]: b for a, b in conf.items() if a.startswith(f"{k}.")
             }
             nested_conf = {**non_scoped_conf, **k_scoped_conf}
-            getattr(self, k).hydrate(
-                nested_conf,
-                parent=self,
-                name=f"{self.__component_name__}.{k}",
-                interactive=interactive,
+            getattr(self, k).configure(
+                nested_conf, name=param_name, interactive=interactive
             )
 
         # Validate all parameters.
@@ -283,23 +315,15 @@ class Component(ABC):
 
     def validate_configuration(self):
         """
-        Called automatically at the end of `hydrate`. Subclasses should override
-        this method to provide fine-grained control over parameter validation.
+        Called automatically at the end of `configure`. Subclasses should
+        override this method to provide fine-grained parameter validation.
         Invalid configuration should be flagged by raising an error with a
         descriptive error message.
-
-        The default implementation verifies that no annotated parameters are
-        missing, and that the configured parameter values match the annotated
-        type (where possible).
         """
 
-        for name, annotated_type in self.annotations.items():
-            if not hasattr(self, name):
-                raise ValueError(
-                    f"No configuration value found for annotated parameter '{self.__component_name__}.{name}' of type '{annotated_type.__name__ if isinstance(annotated_type, type) else annotated_type}'."
-                )
-            value = getattr(self, name)
-            check_type(name, value, annotated_type)
+        # Checking for missing values is done in `configure`. Type-checking is
+        # done in `__setattr__`.
+        pass
 
     @abstractmethod
     def __call__(self):
@@ -309,18 +333,3 @@ class Component(ABC):
         """
 
         raise NotImplementedError
-
-    def __str__(self):
-        params = f",\n{INDENT}".join(
-            [str_key_val(k, getattr(self, k)) for k in self.annotations]
-        )
-        return f"{self.__class__.__name__}(\n{INDENT}{params}\n)"
-
-    def __repr__(self):
-        params = ", ".join(
-            [
-                str_key_val(k, getattr(self, k), color=False, single_line=True)
-                for k in self.annotations
-            ]
-        )
-        return f"{self.__class__.__name__}({params})"

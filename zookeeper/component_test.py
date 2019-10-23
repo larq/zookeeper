@@ -84,7 +84,7 @@ def test_init(Parent):
         p = Parent(d="baz")
 
 
-def test_hydrate_non_interactive_missing_param(Parent):
+def test_configure_non_interactive_missing_param(Parent):
     # Hydrating without configuring a value for an attribute without a default
     # should raise a ValueError.
 
@@ -93,23 +93,23 @@ def test_hydrate_non_interactive_missing_param(Parent):
     with pytest.raises(
         ValueError, match=r"^No configuration value found for annotated parameter"
     ):
-        p.hydrate(p_conf, name="parent")
+        p.configure(p_conf, name="parent")
 
 
-def test_hydrate_override_values(Parent):
-    # A hydrated instance should have its attributes corrected overriden.
+def test_configure_override_values(Parent):
+    # A configured instance should have its attributes corrected overriden.
 
     p = Parent()
     p_conf = {"a": 10, "b": "foo", "c": [1.5, -1.2]}
 
-    p.hydrate(p_conf, name="parent")
+    p.configure(p_conf, name="parent")
 
     # `a` should be correctly overrriden, `b` should take its default value.
     assert p.a == 10
     assert p.b == "foo"
 
 
-def test_hydrate_scoped_override(Parent):
+def test_configure_scoped_override(Parent):
     # Configuration values should be correctly scoped.
 
     p = Parent()
@@ -123,7 +123,7 @@ def test_hydrate_scoped_override(Parent):
         "child.grand_child.c": [0, 4.2],
     }
 
-    p.hydrate(p_conf, name="parent")
+    p.configure(p_conf, name="parent")
 
     # The parent `p` should have the value `a` = 10. Even though a config value
     # is declared for its scope, `p.child` should have no `a` value set, as it
@@ -146,9 +146,9 @@ def test_hydrate_scoped_override(Parent):
     assert p.child.grand_child.c == [0, 4.2]
 
 
-def test_hydrate_one_possible_component():
+def test_configure_one_possible_component():
     # If there's only a single defined, non-abstract class that satisfies a
-    # declared sub-component depency of a component, then we expect `hydrate`
+    # declared sub-component depency of a component, then we expect `configure`
     # to instantiate an instance of this class by default without prompting, but
     # also warn that it has done so.
     class A(Component):
@@ -164,7 +164,7 @@ def test_hydrate_one_possible_component():
     p = Parent()
 
     with patch("zookeeper.component.print_formatted_text") as print_formatted_text:
-        p.hydrate({})
+        p.configure({})
 
     print_formatted_text.assert_called_once()
     assert len(print_formatted_text.call_args[0]) == 1
@@ -174,8 +174,8 @@ def test_hydrate_one_possible_component():
     )
 
 
-def test_hydrate_interactive_prompt_for_missing_value(Parent):
-    # Hydrate with all configuration values specified apart from `c`. When
+def test_configure_interactive_prompt_for_missing_value(Parent):
+    # Configure with all configuration values specified apart from `c`. When
     # running in interactive mode, we expect to be prompted to input this value.
 
     p = Parent()
@@ -184,14 +184,14 @@ def test_hydrate_interactive_prompt_for_missing_value(Parent):
     c_value = [3.14, 2.7]
 
     with patch("zookeeper.utils.prompt", return_value=str(c_value)) as prompt:
-        p.hydrate(p_conf, name="parent", interactive=True)
+        p.configure(p_conf, name="parent", interactive=True)
 
     assert p.child.grand_child.c == c_value
     prompt.assert_called_once()
 
 
-def test_hydrate_interactive_prompt_for_subcomponent_choice():
-    # Hydrate a parent with an unspecified child subcomponent. In interactive
+def test_configure_interactive_prompt_for_subcomponent_choice():
+    # Configure a parent with an unspecified child subcomponent. In interactive
     # mode, we expect to be prompted to choose from the list of defined,
     # concrete sub-components.
 
@@ -226,7 +226,7 @@ def test_hydrate_interactive_prompt_for_subcomponent_choice():
     # an integer input corresponding to an index in this list. The response '3'
     # therefore selects `B2`.
     with patch("zookeeper.utils.prompt", return_value=str(3)) as prompt:
-        p.hydrate(p_conf, interactive=True)
+        p.configure(p_conf, interactive=True)
 
     assert isinstance(p.child, B2)
     assert p() == 126
@@ -240,7 +240,7 @@ def test_str_and_repr(Parent):
     p = Parent()
     p_conf = {"a": 10, "b": "foo", "c": [1.5, -1.2]}
 
-    p.hydrate(p_conf, name="parent")
+    p.configure(p_conf, name="parent")
 
     assert (
         repr(p)
