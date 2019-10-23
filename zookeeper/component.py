@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from inspect import getmro
+from inspect import getmro, isclass
 
 from prompt_toolkit import print_formatted_text
+from typeguard import check_type
 
 from zookeeper.utils import (
     get_concrete_subclasses,
@@ -16,7 +17,7 @@ try:  # pragma: no cover
 except ImportError:  # pragma: no cover
     BLUE = YELLOW = RESET = ""
 
-# Indent for nesting the string representation
+# Indent for nesting in the string representation
 INDENT = " " * 4
 
 
@@ -179,8 +180,15 @@ class Component(ABC):
         component_annotations = []
 
         for k, v in self.__component_annotations__.items():
-            # We can use `issubclass` only when we know that `v` is a class.
-            if isinstance(v, type) and issubclass(v, Component):
+            # We have to be careful because `v` can be a `typing.Type` subclass
+            # e.g. `typing.List[float]`.
+            #
+            # In Python 3.7+, this will cause `issubclass(v, Component)` to
+            # throw, but `isclass(v)` will be `False`.
+            #
+            # In Python 3.6, `isclass(v)` will be `True`, but fortunately
+            #  `issubclass(v, Component)` won't throw.
+            if isclass(v) and issubclass(v, Component):
                 component_annotations.append((k, v))
             else:
                 non_component_annotations.append((k, v))
@@ -210,7 +218,9 @@ class Component(ABC):
             if k in conf:
                 instance = conf["k"]
                 # Check that the configuration instance has the correct type.
-                if not issubclass(instance, v):
+                # `isinstance` here is safe because we know `v` subclasses
+                # `Component`.
+                if not isinstance(instance, v):
                     raise ValueError(
                         f"The configured value '{instance}' for annotated parameter '{self.__component_name__}.{k}' must be an instance of '{v.__name__}'."
                     )
@@ -282,12 +292,8 @@ class Component(ABC):
                 raise ValueError(
                     f"No configuration value found for annotated parameter '{self.__component_name__}.{name}' of type '{annotated_type.__name__ if isinstance(annotated_type, type) else annotated_type}'."
                 )
-            param_value = getattr(self, name)
-            if isinstance(annotated_type, type):
-                if not isinstance(param_value, annotated_type):
-                    raise TypeError(
-                        f"The configuration value {param_value} found for annotated parameter '{name}' must be of type '{annotated_type}', but has type '{type(param_value)}'."
-                    )
+            value = getattr(self, name)
+            check_type(name, value, annotated_type)
 
     @abstractmethod
     def __call__(self):
