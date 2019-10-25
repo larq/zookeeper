@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from inspect import getmro, isclass
 
 from prompt_toolkit import print_formatted_text
@@ -39,10 +38,9 @@ def str_key_val(key, value, color=True, single_line=False):
     )
 
 
-class Component(ABC):
+class Component:
     """
-    A generic, modular component class that performs a context-specific action
-    in `__call__`.
+    A generic, modular component class designed to be easily configurable.
 
     Components can have configurable parameters, which can be either generic
     Python objects or nested sub-components. These are declared with class-level
@@ -332,12 +330,3 @@ class Component(ABC):
         # Checking for missing values is done in `configure`. Type-checking is
         # done in `__setattr__`.
         pass
-
-    @abstractmethod
-    def __call__(self):
-        """
-        Performs the context-specific action of the component. Must be overriden
-        by concrete subclasses.
-        """
-
-        raise NotImplementedError

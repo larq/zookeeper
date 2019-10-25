@@ -1,17 +1,18 @@
+from abc import ABC, abstractmethod
 from zookeeper import Component
 from inspect import getfullargspec, ismethod
 
 
-class Job(Component):
+class Job(Component, ABC):
     """
-
+    A 'Job' component that performs a task on `run`.
     """
 
     def __init_subclass__(cls: type, *args, **kwargs):
-        # Enforce argument-less `__call__`
-        if hasattr(cls, "__call__"):
-            call_args = getfullargspec(cls.__call__).args
-            is_cls_method = ismethod(cls.__call__) and cls.__call__.__self__ == cls
+        # Enforce argument-less `run`
+        if hasattr(cls, "run"):
+            call_args = getfullargspec(cls.run).args
+            is_cls_method = ismethod(cls.run) and cls.run.__self__ == cls
 
             if (
                 len(call_args) == 0
@@ -21,7 +22,11 @@ class Job(Component):
                 return
 
         raise ValueError(
-            "A `Job` subclass must define a `__call__` method taking no positional "
-            f"arguments which runs the job, but {cls.__name__}.__call__ accepts "
+            "A `Job` subclass must define a `run` method taking no positional "
+            f"arguments which runs the job, but {cls.__name__}.run accepts "
             f"positional arguments {call_args}."
         )
+
+    @abstractmethod
+    def run(self):
+        pass

@@ -1,6 +1,7 @@
 import re
 from typing import List
 from unittest.mock import patch
+from abc import ABC, abstractmethod
 
 import pytest
 
@@ -12,10 +13,14 @@ from zookeeper import Component
 # and re-initialised.
 @pytest.fixture
 def Parent():
-    class AbstractGrandChild(Component):
+    class AbstractGrandChild(Component, ABC):
         a: int
         b: str
         c: List[float]
+
+        @abstractmethod
+        def __call__(self):
+            pass
 
     class GrandChild1(AbstractGrandChild):
         def __call__(self):
@@ -54,18 +59,6 @@ def test_override_init_error():
             def __init__(self, c, **kwargs):
                 super().__init__(**kwargs)
                 self.c = c
-
-
-def test_instantiate_abstract_error():
-    # Instantiating a component without overriding `__call__` should raise a
-    # ValueError.
-
-    class C(Component):
-        def some_method(self):
-            return "foo"
-
-    with pytest.raises(TypeError, match=r"^Can't instantiate abstract class"):
-        C()
 
 
 def test_init(Parent):
