@@ -2,8 +2,8 @@ from inspect import getmro, isclass
 
 from prompt_toolkit import print_formatted_text
 from typeguard import check_type
-
 from zookeeper.utils import (
+    convert_to_snake_case,
     get_concrete_subclasses,
     prompt_for_component,
     promt_for_param_value,
@@ -253,6 +253,18 @@ class Component:
             # The value from the `conf` dict takes priority.
             if k in conf:
                 instance = conf[k]
+                # The value could be parsed from command-line arguments, in
+                # which case we expect a string naming the class.
+                if isinstance(instance, str):
+                    for component_cls in concrete_subclasses:
+                        if (
+                            instance == component_cls.__name__
+                            or instance == convert_to_snake_case(component_cls.__name__)
+                        ):
+                            instance = component_cls()
+                            conf[k] = instance
+                            break
+
                 setattr(self, k, instance)
 
             # If there's no config value but the value is set on the object, add

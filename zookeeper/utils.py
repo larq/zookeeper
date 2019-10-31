@@ -1,8 +1,14 @@
+import re
 from ast import literal_eval
 from inspect import isabstract
 from typing import Set
 
 from prompt_toolkit import print_formatted_text, prompt
+
+
+def convert_to_snake_case(name):
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 def get_concrete_subclasses(cls) -> Set[type]:
@@ -15,29 +21,35 @@ def get_concrete_subclasses(cls) -> Set[type]:
     return subclasses
 
 
+def parse_value_from_string(string: str):
+    try:
+        value = literal_eval(string)
+    except ValueError:
+        # Parse as string if above raises ValueError. Note that
+        # syntax errors will still raise an error.
+        value = str(string)
+    except:
+        raise ValueError(f"Could not parse '{string}'.")
+    return value
+
+
 def promt_for_param_value(param_name: str, param_type):
     """Promt the user to input a value for the parameter `param_name`."""
     print_formatted_text(
-        f"No value found for parameter '{param_name}' of type '{param_type}'. Please enter a value for this parameter:"
+        f"No value found for parameter '{param_name}' of type '{param_type}'. "
+        "Please enter a value for this parameter:"
     )
     response = prompt("> ")
     while response == "":
         print_formatted_text(f"No input received, please enter a value:")
         response = prompt("> ")
-    try:
-        value = literal_eval(response)
-    except ValueError:
-        # Parse as string if above raises ValueError. Note that
-        # syntax errors will still raise an error.
-        value = str(value)
-    except:
-        raise ValueError(f"Could not parse '{value}'")
-    return value
+    return parse_value_from_string(response)
 
 
 def prompt_for_component(component_name: str, component_cls: type) -> type:
     print_formatted_text(
-        f"No instance found for nested component '{component_name}' of type '{component_cls}'."
+        f"No instance found for nested component '{component_name}' of type "
+        f"'{component_cls}'."
     )
 
     component_options = {
@@ -52,8 +64,8 @@ def prompt_for_component(component_name: str, component_cls: type) -> type:
     component_names = sorted(list(component_options.keys()))
 
     print_formatted_text(
-        f"Please choose from one of the following concrete subclasses of '{component_cls}' to instantiate:"
-        + "\n"
+        f"Please choose from one of the following concrete subclasses of "
+        f"'{component_cls}' to instantiate:\n"
         + "\n".join([f"{i + 1})\t{o}" for i, o in enumerate(component_names)])
     )
     response = prompt("> ")

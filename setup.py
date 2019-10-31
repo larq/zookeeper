@@ -18,7 +18,7 @@ setup(
     packages=find_packages(),
     license="Apache 2.0",
     python_requires=">=3.6",
-    install_requires=["prompt-toolkit>=2.0.10", "typeguard>=2.5.1"],
+    install_requires=["click>=7.0", "prompt-toolkit>=2.0.10", "typeguard>=2.5.1"],
     extras_require={"test": ["pytest>=4.3.1", "pytest-cov>=2.6.1"]},
     classifiers=[
         "Development Status :: 3 - Alpha",
