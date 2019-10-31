@@ -86,11 +86,11 @@ class Dataset(Component):
     def num_classes(self) -> int:
         try:
             features = self.info.features
-            if hasattr(features, "label"):
+            if "label" in features:
                 return features["label"].num_classes
-            if hasattr(features, "labels"):
+            if "labels" in features:
                 return features["labels"].feature.num_classes
-            if hasattr(features, "objects") and hasattr(features["objects"], "label"):
+            if "objects" in features and "label" in features["objects"]:
                 return features["objects"]["label"].num_classes
         except Exception:
             pass

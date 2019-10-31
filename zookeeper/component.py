@@ -267,7 +267,7 @@ class Component:
 
                 setattr(self, k, instance)
 
-            # If there's no config value but the value is set on the object, add
+            # If there's no config value but a value is set on the object, add
             # that value to the config so that it can get picked up in child
             # components.
             elif hasattr(self, k):
