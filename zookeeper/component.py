@@ -20,6 +20,16 @@ except ImportError:  # pragma: no cover
 INDENT = " " * 4
 
 
+def defined_on_self_or_parent(self, name):
+    # Using `hasattr` is not safe, as it is implemented with `getattr` wrapped
+    # in a try-catch (Python is terrible), so we need to check `dir(self)`.
+    if name in dir(self):
+        return True
+    if self.__component_parent__:
+        return defined_on_self_or_parent(self.__component_parent__, name)
+    return False
+
+
 def str_key_val(key, value, color=True, single_line=False):
     if isinstance(value, Component):
         if single_line:
@@ -118,6 +128,10 @@ class Component:
     # The name of the component.
     __component_name__ = None
 
+    # If this instance is nested in another component, a reference to that
+    # parent instance.
+    __component_parent__ = None
+
     # All annotations which apply to the class, including those inherited from
     # superclasses. This is populated in `__init__`.
     __component_annotations__ = {}
@@ -159,6 +173,14 @@ class Component:
                 "and sets the corresponding attribute values on the instance."
             )
 
+    def __getattr__(self, name):
+        # This is only called if the attribute doesn't exist on the instance
+        # (i.e. on `self`, on the class, or on any superclass). When this
+        # happens, search on the component parent if possible.
+        if self.__component_parent__:
+            return getattr(self.__component_parent__, name)
+        raise AttributeError
+
     def __setattr__(self, name, value):
         # Type-check annotated values.
         if name in self.__component_annotations__:
@@ -181,7 +203,7 @@ class Component:
         )
         return f"{self.__class__.__name__}({params})"
 
-    def configure(self, conf, name=None, interactive=False):
+    def configure(self, conf, name=None, parent=None, interactive=False):
         """
         Configure the component instance with parameters from the `conf` dict.
 
@@ -191,6 +213,7 @@ class Component:
         """
 
         self.__component_name__ = name or self.__class__.__name__
+        self.__component_parent__ = parent
 
         # Divide the annotations into those which are and those which are not
         # nested components. We will process the non-component parameters first,
@@ -223,11 +246,10 @@ class Component:
                 param_value = conf[k]
                 setattr(self, k, param_value)
 
-            # If there's no config value but the value is already set on the
-            # instance, add that value to the config so that it can get picked
-            # up in child components.
-            elif hasattr(self, k):
-                conf[k] = getattr(self, k)
+            # If there's no config value but a value is already set on the
+            # instance (or a parent), no action needs to be taken.
+            elif defined_on_self_or_parent(self, k):
+                pass
 
             # If we are running interactively, prompt for the missing value. Add
             # it to the configuration so that it gets passed to any children.
@@ -253,8 +275,8 @@ class Component:
             # The value from the `conf` dict takes priority.
             if k in conf:
                 instance = conf[k]
-                # The value could be parsed from command-line arguments, in
-                # which case we expect a string naming the class.
+                # The value might have been parsed from command-line arguments,
+                # in which case we expect a string naming the class.
                 if isinstance(instance, str):
                     for component_cls in concrete_subclasses:
                         if (
@@ -264,14 +286,12 @@ class Component:
                             instance = component_cls()
                             conf[k] = instance
                             break
-
                 setattr(self, k, instance)
 
-            # If there's no config value but a value is set on the object, add
-            # that value to the config so that it can get picked up in child
-            # components.
-            elif hasattr(self, k):
-                conf[k] = getattr(self, k)
+            # If there's no config value but a value is already set on the
+            # instance (or a parent), no action needs to be taken.
+            elif defined_on_self_or_parent(self, k):
+                pass
 
             # If there is no concrete subclass of `v`, raise an error.
             elif len(concrete_subclasses) == 0:
@@ -293,18 +313,16 @@ class Component:
                 # This is safe because we ban overriding `__init__`.
                 instance = component_cls()
                 setattr(self, k, instance)
-                conf[k] = instance
 
-            # If we are running interactively and there is more than one concrete
-            # subclass of `v`, prompt for the concrete subclass to instantiate.
-            # Add the instance to the configuation so that is can get passed to
-            # any children.
+            # If we are running interactively and there is more than one
+            # concrete subclass of `v`, prompt for the concrete subclass to
+            # instantiate. Add the instance to the configuation so that is can
+            # get passed to any children.
             elif interactive:
                 component_cls = prompt_for_component(param_name, v)
                 # The is safe because we ban overriding `__init__`.
                 instance = component_cls()
                 setattr(self, k, instance)
-                conf[k] = instance
 
             # If we're not running interactively and there is more than one
             # concrete subclass of `v`, raise an error.
@@ -312,7 +330,7 @@ class Component:
                 raise ValueError(
                     f"Annotated parameter '{param_name}' of type '{param_type_name}' "
                     f"has no configured value. Please configure '{param_name}' with "
-                    "one of the following concrete subclasses of '{param_type_name}': "
+                    f"one of the following concrete subclasses of '{param_type_name}': "
                     + str(list(concrete_subclasses))
                 )
 
@@ -325,7 +343,7 @@ class Component:
             }
             nested_conf = {**non_scoped_conf, **k_scoped_conf}
             getattr(self, k).configure(
-                nested_conf, name=param_name, interactive=interactive
+                nested_conf, name=param_name, parent=self, interactive=interactive
             )
 
         # Validate all parameters.
