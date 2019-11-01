@@ -88,18 +88,29 @@ def build_train(preload=None):
             if preload:
                 preload()
 
+            hparams = registry.get_hparams(model_name, hparams_set)
+            if hparams_str:
+                hparams.parse(hparams_str)
+
+            preprocess_registry = registry.DATA_REGISTRY[dataset_name]
+            if preprocess_fn not in preprocess_registry:
+                raise registry.PreprocessNotFoundError(dataset_name, preprocess_fn)
+
+            preprocessing = preprocess_registry[preprocess_fn]
+
+            # FIXME
+            preprocessing.anchor_params = hparams.anchors
+
             dataset = registry.get_dataset(
                 dataset_name,
-                preprocess_fn,
+                preprocessing,
                 use_val_split=validationset,
                 cache_dir=data_cache,
                 data_dir=data_dir,
                 version=dataset_version,
             )
             build_model = registry.get_model_function(model_name)
-            hparams = registry.get_hparams(model_name, hparams_set)
-            if hparams_str:
-                hparams.parse(hparams_str)
+
             click.echo(hparams)
 
             if output_dir is None:

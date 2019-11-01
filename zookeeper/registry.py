@@ -93,7 +93,7 @@ def register_hparams(model):
 
 def get_dataset(
     dataset_name,
-    preprocess_name,
+    preprocessing,
     use_val_split=False,
     cache_dir=None,
     version=None,
@@ -102,12 +102,9 @@ def get_dataset(
     if dataset_name not in DATA_REGISTRY:
         raise DatasetNotFoundError(dataset_name)
 
-    preprocess_registry = DATA_REGISTRY[dataset_name]
-    if preprocess_name not in preprocess_registry:
-        raise PreprocessNotFoundError(dataset_name, preprocess_name)
     return Dataset(
         dataset_name,
-        preprocess_registry[preprocess_name],
+        preprocessing,
         use_val_split=use_val_split,
         cache_dir=cache_dir,
         data_dir=data_dir,
