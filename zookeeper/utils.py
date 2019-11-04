@@ -49,11 +49,11 @@ def promt_for_param_value(param_name: str, param_type):
 def prompt_for_component(component_name: str, component_cls: type) -> type:
     print_formatted_text(
         f"No instance found for nested component '{component_name}' of type "
-        f"'{component_cls}'."
+        f"'{component_cls.__qualname__}'."
     )
 
     component_options = {
-        cls.__name__: cls for cls in get_concrete_subclasses(component_cls)
+        cls.__qualname__: cls for cls in get_concrete_subclasses(component_cls)
     }
 
     if len(component_options) == 0:
@@ -65,8 +65,8 @@ def prompt_for_component(component_name: str, component_cls: type) -> type:
 
     print_formatted_text(
         f"Please choose from one of the following concrete subclasses of "
-        f"'{component_cls}' to instantiate:\n"
-        + "\n".join([f"{i + 1})\t{o}" for i, o in enumerate(component_names)])
+        f"'{component_cls.__qualname__}' to instantiate:\n"
+        + "\n".join([f"{i + 1})    {o}" for i, o in enumerate(component_names)])
     )
     response = prompt("> ")
     while True:
@@ -74,7 +74,7 @@ def prompt_for_component(component_name: str, component_cls: type) -> type:
             response = int(response) - 1
         except:
             response = -1
-        if 1 <= response < len(component_names):
+        if 0 <= response < len(component_names):
             break
         print_formatted_text(
             f"Invalid input. Please enter a number between 1 and {len(component_names)}:"

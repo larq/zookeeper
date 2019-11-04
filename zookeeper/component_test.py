@@ -1,10 +1,11 @@
 import re
+from abc import ABC, abstractmethod
 from typing import List
 from unittest.mock import patch
-from abc import ABC, abstractmethod
+
+from click import unstyle
 
 import pytest
-
 from zookeeper import Component
 
 
@@ -162,7 +163,8 @@ def test_configure_one_possible_component():
     print_formatted_text.assert_called_once()
     assert len(print_formatted_text.call_args[0]) == 1
     assert re.search(
-        r" is the only concrete component class that satisfies the type of the annotated parameter 'Parent.a'. Using an instance of this class by default.$",
+        r" is the only concrete component class that satisfies the type of the "
+        "annotated parameter 'Parent.a'. Using an instance of this class by default.$",
         print_formatted_text.call_args[0][0],
     )
 
@@ -236,11 +238,11 @@ def test_str_and_repr(Parent):
     p.configure(p_conf, name="parent")
 
     assert (
-        repr(p)
+        unstyle(repr(p))
         == """Parent(a=10, b="foo", child=Child(b="foo", grand_child=GrandChild1(a=10, b="foo", c=[1.5, -1.2])))"""
     )
     assert (
-        str(p)
+        unstyle(str(p))
         == """Parent(
     a = 10,
     b = "foo",

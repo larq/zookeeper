@@ -176,8 +176,9 @@ class Component:
     def __getattr__(self, name):
         # This is only called if the attribute doesn't exist on the instance
         # (i.e. on `self`, on the class, or on any superclass). When this
-        # happens, search on the component parent if possible.
-        if self.__component_parent__:
+        # happens, if `name` is a declared annotation, search on the component
+        # parent if possible.
+        if name in self.__component_annotations__ and self.__component_parent__:
             return getattr(self.__component_parent__, name)
         raise AttributeError
 
@@ -269,7 +270,7 @@ class Component:
         # Process nested component annotations
         for k, v in component_annotations:
             param_name = f"{self.__component_name__}.{k}"
-            param_type_name = v.__name__
+            param_type_name = v.__qualname__
             concrete_subclasses = get_concrete_subclasses(v)
 
             # The value from the `conf` dict takes priority.
@@ -281,6 +282,7 @@ class Component:
                     for component_cls in concrete_subclasses:
                         if (
                             instance == component_cls.__name__
+                            or instance == component_cls.__qualname__
                             or instance == convert_to_snake_case(component_cls.__name__)
                         ):
                             instance = component_cls()
@@ -306,9 +308,9 @@ class Component:
             elif len(concrete_subclasses) == 1:
                 component_cls = list(concrete_subclasses)[0]
                 print_formatted_text(
-                    f"{component_cls} is the only concrete component class that "
-                    f"satisfies the type of the annotated parameter '{param_name}'. "
-                    "Using an instance of this class by default."
+                    f"'{component_cls.__qualname__}' is the only concrete component class "
+                    "that satisfies the type of the annotated parameter "
+                    f"'{param_name}'. Using an instance of this class by default."
                 )
                 # This is safe because we ban overriding `__init__`.
                 instance = component_cls()
@@ -329,9 +331,9 @@ class Component:
             else:
                 raise ValueError(
                     f"Annotated parameter '{param_name}' of type '{param_type_name}' "
-                    f"has no configured value. Please configure '{param_name}' with "
-                    f"one of the following concrete subclasses of '{param_type_name}': "
-                    + str(list(concrete_subclasses))
+                    f"has no configured value. Please configure '{param_name}' with one "
+                    f"of the following concrete subclasses of '{param_type_name}':\n    "
+                    + "\n    ".join(list(c.__qualname__ for c in concrete_subclasses))
                 )
 
             # Configure the sub-component. The configuration we use consists of
