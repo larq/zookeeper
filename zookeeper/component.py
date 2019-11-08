@@ -72,7 +72,7 @@ class Component:
     Configuration can be interactive. In this case, the method will prompt for
     missing parameters via the CLI.
 
-    The following example illustrates the hydration mechanism with scoped
+    The following example illustrates the configuration mechanism with scoped
     configuration:
 
     ```
