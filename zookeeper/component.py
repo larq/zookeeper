@@ -69,7 +69,7 @@ class Component:
     the child, or on a _closer anscestor_, is configured with a different value,
     then that value will override the one from the original parent.
 
-    Hydration can be interactive. In this case, the method will prompt for
+    Configuration can be interactive. In this case, the method will prompt for
     missing parameters via the CLI.
 
     The following example illustrates the hydration mechanism with scoped
