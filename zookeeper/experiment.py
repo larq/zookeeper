@@ -10,7 +10,7 @@ from zookeeper.preprocessing import Preprocessing
 class Experiment(Job):
     """
     A wrapper around a Keras experiment. Subclasses must implement their
-    training loop in `build`.
+    training loop in `run`.
     """
 
     # Nested components
