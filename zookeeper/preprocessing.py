@@ -1,7 +1,7 @@
 from functools import partial
 from inspect import getfullargspec
 
-from zookeeper import Component
+from zookeeper.component import Component
 
 
 def pass_training_kwarg(function, training=False):
@@ -13,10 +13,10 @@ def pass_training_kwarg(function, training=False):
 class Preprocessing(Component):
     """A wrapper around `tf.data` preprocessing."""
 
-    def inputs(self, data, training):
+    def input(self, data, training):
         """
-        A method to define preprocessing for inputs.
-        This method or `__call__` needs to be overwritten by all subclasses.
+        A method to define preprocessing for inputs. This method or `__call__`
+        needs to be overwritten by all subclasses.
 
         Arguments:
             data:
@@ -30,10 +30,10 @@ class Preprocessing(Component):
 
         raise NotImplementedError("Must be implemented in subclasses.")
 
-    def outputs(self, data, training):
+    def output(self, data, training):
         """
-        A method to define preprocessing for outputs.
-        This method or `__call__` needs to be overwritten by all subclasses.
+        A method to define preprocessing for outputs. This method or `__call__`
+        needs to be overwritten by all subclasses.
 
         Arguments:
             data:

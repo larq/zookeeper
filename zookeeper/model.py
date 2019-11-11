@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Tuple
 
 from tensorflow import keras
+
 from zookeeper import Component
 
 
@@ -11,5 +13,5 @@ class Model(Component, ABC):
     """
 
     @abstractmethod
-    def build(self) -> keras.models.Model:
-        pass
+    def build(self, input_shape: Tuple[int, int, int]) -> keras.models.Model:
+        raise NotImplementedError
