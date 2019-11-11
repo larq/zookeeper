@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="zookeeper",
-    version="0.5.5",
+    version="1.0.dev1",
     author="Plumerai",
     author_email="lukas@plumerai.co.uk",
     description="A small library for managing deep learning models, hyper parameters and datasets",
@@ -20,17 +20,17 @@ setup(
     python_requires=">=3.6",
     install_requires=[
         "click>=7.0",
-        "click-completion>=0.5.1",
-        "matplotlib>=3.0.3",
-        "tensorflow-datasets>=1.1.0",
+        "prompt-toolkit>=2.0.10",
+        "tensorflow-datasets>=1.3.0",
+        "typeguard>=2.5.1",
     ],
     extras_require={
-        "tensorflow": ["tensorflow>=1.13.1"],
-        "tensorflow_gpu": ["tensorflow-gpu>=1.13.1"],
+        "tensorflow": ["tensorflow>=1.14.0"],
+        "tensorflow_gpu": ["tensorflow-gpu>=1.14.0"],
         "test": ["pytest>=4.3.1", "pytest-cov>=2.6.1"],
     },
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Science/Research",

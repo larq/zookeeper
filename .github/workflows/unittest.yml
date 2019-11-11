@@ -7,35 +7,23 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        tf-version: [1.13.1, 1.14.0]
+        python-version: [3.6, 3.7]
+        tf-version: [1.14.0, 2.0.0]
 
     steps:
       - uses: actions/checkout@v1
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.7
+          python-version: ${{matrix.python-version}}
       - name: Install dependencies
         run: |
           pip install tensorflow==${{matrix.tf-version}}
           pip install -e .[test]
       - name: Test with pytest
-        run: pytest .
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.6
-      - name: Install dependencies
-        run: |
-          pip install tensorflow==2.0.0
-          pip install -e .[test]
-      - name: Generate coverage report
-        run: pytest . --cov=zookeeper --cov-report=xml --cov-config=.coveragerc
-      - name: Upload coverage to Codecov
+        run: pytest . -vv --cov=zookeeper --cov-report=xml --cov-config=.coveragerc
+      - name: Upload code-coverage report to Codecov
+        if: matrix.python-version == '3.7' && matrix.tf-version == '2.0.0'
         run: curl -s https://codecov.io/bash | bash -s -- -t $token -f ./coverage.xml -F unittests
         env:
           token: ${{secrets.CODECOV_TOKEN}}

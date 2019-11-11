@@ -1,5 +1,8 @@
-from zookeeper.hparam import HParams
+from zookeeper.component import Component
+from zookeeper.dataset import Dataset
+from zookeeper.experiment import Experiment
+from zookeeper.task import Task
+from zookeeper.model import Model
 from zookeeper.preprocessing import Preprocessing
-from zookeeper.cli import build_train, cli
 
-__all__ = ["build_train", "cli", "HParams", "Preprocessing"]
+__all__ = ["Component", "Dataset", "Experiment", "Model", "Preprocessing", "Task"]
