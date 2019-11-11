@@ -308,8 +308,8 @@ class Component:
             elif len(concrete_subclasses) == 1:
                 component_cls = list(concrete_subclasses)[0]
                 print_formatted_text(
-                    f"'{component_cls.__qualname__}' is the only concrete component class "
-                    "that satisfies the type of the annotated parameter "
+                    f"'{component_cls.__qualname__}' is the only concrete component "
+                    "class that satisfies the type of the annotated parameter "
                     f"'{param_name}'. Using an instance of this class by default."
                 )
                 # This is safe because we ban overriding `__init__`.

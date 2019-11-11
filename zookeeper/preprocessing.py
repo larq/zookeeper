@@ -11,9 +11,7 @@ def pass_training_kwarg(function, training=False):
 
 
 class Preprocessing(Component):
-    """
-    An wrapper around `tf.data` preprocessing.
-    """
+    """A wrapper around `tf.data` preprocessing."""
 
     def inputs(self, data, training):
         """
