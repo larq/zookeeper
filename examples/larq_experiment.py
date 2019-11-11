@@ -1,7 +1,6 @@
 # This is an example of how to use Zookeeper to run a Larq BinaryNet experiment
 # on CIFAR-10.
 
-import math
 from functools import partial
 from typing import Tuple, Union
 
@@ -24,7 +23,7 @@ class PadCropAndFlip(Preprocessing):
     pad_size: int
     output_size: int
 
-    def inputs(self, data, training):
+    def input(self, data, training):
         image = data["image"]
         if training:
             image = tf.image.resize_with_crop_or_pad(
@@ -40,7 +39,7 @@ class PadCropAndFlip(Preprocessing):
             )
         return tf.cast(image, tf.float32) / (255.0 / 2.0) - 1.0
 
-    def outputs(self, data):
+    def output(self, data):
         return data["label"]
 
 
@@ -133,18 +132,14 @@ class BinaryNetCifar10(Experiment):
                 .cache()
                 .map(partial(self.preprocessing, training=True))
                 .shuffle(10 * self.batch_size)
-                .repeat()
                 .batch(self.batch_size)
             )
-            num_train_examples = self.dataset.num_train_examples
             validation_data = (
                 self.dataset.validation_data()
                 .map(self.preprocessing)
                 .cache()
-                .repeat()
                 .batch(self.batch_size)
             )
-            num_validation_examples = self.dataset.num_validation_examples
             input_shape = train_data.output_shapes[0][1:]
 
         model = self.model.build(input_shape=input_shape)
@@ -156,9 +151,7 @@ class BinaryNetCifar10(Experiment):
         model.fit(
             train_data,
             epochs=self.epochs,
-            steps_per_epoch=math.ceil(num_train_examples / self.batch_size),
             validation_data=validation_data,
-            validation_steps=math.ceil(num_validation_examples / self.batch_size),
             callbacks=self.callbacks,
         )
 
