@@ -24,7 +24,7 @@ class PadCropAndFlip(Preprocessing):
     pad_size: int
     output_size: int
 
-    def inputs(self, data, training):
+    def input(self, data, training):
         image = data["image"]
         if training:
             image = tf.image.resize_with_crop_or_pad(
@@ -40,7 +40,7 @@ class PadCropAndFlip(Preprocessing):
             )
         return tf.cast(image, tf.float32) / (255.0 / 2.0) - 1.0
 
-    def outputs(self, data):
+    def output(self, data):
         return data["label"]
 
 
