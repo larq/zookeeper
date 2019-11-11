@@ -2,12 +2,12 @@ from typing import Callable, Optional, Union, List
 
 from tensorflow import keras
 from zookeeper.dataset import Dataset
-from zookeeper.job import Job
+from zookeeper.task import Task
 from zookeeper.model import Model
 from zookeeper.preprocessing import Preprocessing
 
 
-class Experiment(Job):
+class Experiment(Task):
     """
     A wrapper around a Keras experiment. Subclasses must implement their
     training loop in `run`.

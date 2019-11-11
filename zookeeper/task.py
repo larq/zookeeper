@@ -3,9 +3,9 @@ from zookeeper import Component
 from inspect import getfullargspec, ismethod
 
 
-class Job(Component, ABC):
+class Task(Component, ABC):
     """
-    A 'Job' component that performs a task on `run`.
+    A 'Task' component that performs a task on `run`.
     """
 
     def __init_subclass__(cls: type, *args, **kwargs):
@@ -22,8 +22,8 @@ class Job(Component, ABC):
                 return
 
         raise ValueError(
-            "A `Job` subclass must define a `run` method taking no positional "
-            f"arguments which runs the job, but {cls.__name__}.run accepts "
+            "A `Task` subclass must define a `run` method taking no positional "
+            f"arguments which runs the task, but {cls.__name__}.run accepts "
             f"positional arguments {call_args}."
         )
 

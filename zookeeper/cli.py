@@ -2,7 +2,7 @@ from inspect import isclass
 
 import re
 import click
-from zookeeper.job import Job
+from zookeeper.task import Task
 from zookeeper.utils import convert_to_snake_case, parse_value_from_string
 
 
@@ -40,24 +40,24 @@ class ConfigParam(click.ParamType):
         return key, value
 
 
-def add_job_to_cli(job_cls: type):
-    """A decorator which adds a CLI command to run the Job."""
+def add_task_to_cli(task_cls: type):
+    """A decorator which adds a CLI command to run the Task."""
 
-    if not isclass(job_cls) or not issubclass(job_cls, Job):
+    if not isclass(task_cls) or not issubclass(task_cls, Task):
         raise ValueError(
-            "The decorator `add_job_to_cli` can only be applied to `zookeeper.Job` "
+            "The decorator `add_task_to_cli` can only be applied to `zookeeper.Task` "
             "subclasses."
         )
 
-    job_name = convert_to_snake_case(job_cls.__name__)
+    task_name = convert_to_snake_case(task_cls.__name__)
 
-    @cli.command(job_name)
+    @cli.command(task_name)
     @click.argument("config", type=ConfigParam(), nargs=-1)
     @click.option("-i", "--interactive", is_flag=True, default=False)
     def command(config, interactive):
         config = {k: v for k, v in config}
-        job_instance = job_cls()
-        job_instance.configure(config, interactive=interactive)
-        job_instance.run()
+        task_instance = task_cls()
+        task_instance.configure(config, interactive=interactive)
+        task_instance.run()
 
-    return job_cls
+    return task_cls
