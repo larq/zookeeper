@@ -30,9 +30,6 @@ class Dataset(Component):
     # The directory that the dataset is stored in.
     data_dir: Optional[str] = None
 
-    # Whether or not to cache the data in RAM. Defaults to False.
-    cache_in_memory: bool = False
-
     # Train and validation splits. A validation split is not required.
     train_split: str
     validation_split: Optional[str] = None
@@ -104,14 +101,13 @@ class Dataset(Component):
     def load(self, split, decoders, shuffle) -> tf.data.Dataset:
         """Return a `tf.data.Dataset` object representing the requested split."""
 
-        data = tfds.load(
+        return tfds.load(
             name=self.name_version,
             split=split,
             data_dir=self.data_dir,
             decoders=decoders,
             as_dataset_kwargs={"shuffle_files": shuffle},
         )
-        return data.cache() if self.cache_in_memory else data
 
     def train_data(self, decoders=None) -> tf.data.Dataset:
         return self.load(self.train_split, decoders=decoders, shuffle=True)
