@@ -10,12 +10,11 @@ from zookeeper import Component
 class Dataset(Component):
     """
     An abstract base class to encapsulate a dataset. Concrete sub-classes must
-    implement the `train_data` method, and may optionally implement the
-    `validation_data` method.
+    implement the `train` method, and optionally the `validation` method.
     """
 
     @abstractmethod
-    def train_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+    def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         """
         Return a tuple of the training dataset and the number of training
         examples in the dataset.
@@ -23,7 +22,7 @@ class Dataset(Component):
 
         raise NotImplementedError
 
-    def validation_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+    def validation(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         """
         Return a tuple of the validation dataset and the number of validation
         examples in the dataset. By default, raises an error that no validation
@@ -134,13 +133,13 @@ class TFDSDataset(Dataset):
             as_dataset_kwargs={"shuffle_files": shuffle},
         )
 
-    def train_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+    def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         return (
             self.load(self.train_split, decoders=decoders, shuffle=True),
             self.num_examples(self.train_split),
         )
 
-    def validation_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+    def validation(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         if self.validation_split is None:
             raise ValueError(
                 f"Dataset {self.__class__.__name__} is not configured with a "
@@ -197,13 +196,13 @@ class MultiTFDSDataset(Dataset):
             result = result.concatenate(dataset) if result is not None else dataset
         return result
 
-    def train_data(self, decoders=None):
+    def train(self, decoders=None):
         return (
             self.load(self.train_splits, decoders=decoders, shuffle=True),
             self.num_examples(self.train_splits),
         )
 
-    def validation_data(self, decoders=None):
+    def validation(self, decoders=None):
         return (
             self.load(self.validation_splits, decoders=decoders, shuffle=False),
             self.num_examples(self.validation_splits),

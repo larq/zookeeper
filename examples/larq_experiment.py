@@ -127,14 +127,14 @@ class BinaryNetCifar10(Experiment):
 
     def run(self):
         with tf.device("/cpu:0"):
-            train_data, num_train_examples = self.dataset.train_data()
+            train_data, num_train_examples = self.dataset.train()
             train_data = (
                 train_data.cache()
                 .map(partial(self.preprocessing, training=True))
                 .shuffle(10 * self.batch_size)
                 .batch(self.batch_size)
             )
-            validation_data, num_validation_examples = self.dataset.validation_data()
+            validation_data, num_validation_examples = self.dataset.validation()
             validation_data = (
                 validation_data.map(self.preprocessing).cache().batch(self.batch_size)
             )
