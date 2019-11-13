@@ -175,13 +175,13 @@ class MultiTFDSDataset(Dataset):
         dictionary `splits`.
         """
 
-        result = 0
-        for name, split in splits:
-            result += sum(
+        return sum(
+            sum(
                 tfds.builder(name, data_dir=self.data_dir).info.splits[s].num_examples
                 for s in base_splits(split)
             )
-        return result
+            for name, split in splits
+        )
 
     def load(self, splits, decoders, shuffle) -> tf.data.Dataset:
         result = None
