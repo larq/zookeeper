@@ -1,8 +1,39 @@
-from typing import Optional
+from abc import abstractmethod
+from typing import Optional, Tuple
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+
 from zookeeper import Component
+
+
+class Dataset(Component):
+    """
+    An abstract base class to encapsulate a dataset. Concrete sub-classes must
+    implement the `train_data` method, and may optionally implement the
+    `validation_data` method.
+    """
+
+    @abstractmethod
+    def train_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+        """
+        Return a tuple of the training dataset and the number of training
+        examples in the dataset.
+        """
+
+        raise NotImplementedError
+
+    def validation_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+        """
+        Return a tuple of the validation dataset and the number of validation
+        examples in the dataset. By default, raises an error that no validation
+        data is provided.
+        """
+
+        raise ValueError(
+            f"Dataset '{self.__component_name__}' is not configured with validation "
+            "data."
+        )
 
 
 def base_splits(split):
@@ -16,7 +47,7 @@ def base_splits(split):
     return [split]
 
 
-class Dataset(Component):
+class TFDSDataset(Dataset):
     """
     A wrapper around a TensorFlowDatasets dataset.
     """
