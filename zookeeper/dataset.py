@@ -183,7 +183,7 @@ class MultiTFDSDataset(Dataset):
 
     def load(self, splits, decoders, shuffle) -> tf.data.Dataset:
         result = None
-        for name, split in self.train_splits.items():
+        for name, split in splits.items():
             dataset = tfds.load(
                 name=name,
                 split=split,
