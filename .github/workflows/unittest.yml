@@ -1,7 +1,10 @@
 name: Unittest
 
-on: [push, pull_request]
-
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
 jobs:
   tests:
     runs-on: ubuntu-latest
