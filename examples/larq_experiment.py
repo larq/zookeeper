@@ -8,11 +8,11 @@ import larq as lq
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from zookeeper import Dataset, Experiment, Model, Preprocessing
+from zookeeper import Dataset, Experiment, Model, Preprocessing, TFDSDataset
 from zookeeper.cli import add_task_to_cli, cli
 
 
-class Cifar10(Dataset):
+class Cifar10(TFDSDataset):
     name = "cifar10"
     # CIFAR-10 has only train and test, so validate on test.
     train_split = tfds.Split.TRAIN
@@ -108,9 +108,9 @@ class BinaryNet(Model):
 
 @add_task_to_cli
 class BinaryNetCifar10(Experiment):
-    dataset: Cifar10
+    dataset = Cifar10()
     preprocessing = PadCropAndFlip(pad_size=40, output_size=32)
-    model: BinaryNet
+    model = BinaryNet()
 
     epochs = 100
     batch_size = 128
@@ -127,18 +127,16 @@ class BinaryNetCifar10(Experiment):
 
     def run(self):
         with tf.device("/cpu:0"):
+            train_data, num_train_examples = self.dataset.train_data()
             train_data = (
-                self.dataset.train_data()
-                .cache()
+                train_data.cache()
                 .map(partial(self.preprocessing, training=True))
                 .shuffle(10 * self.batch_size)
                 .batch(self.batch_size)
             )
+            validation_data, num_validation_examples = self.dataset.validation_data()
             validation_data = (
-                self.dataset.validation_data()
-                .map(self.preprocessing)
-                .cache()
-                .batch(self.batch_size)
+                validation_data.map(self.preprocessing).cache().batch(self.batch_size)
             )
             input_shape = train_data.output_shapes[0][1:]
 

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -134,26 +134,77 @@ class TFDSDataset(Dataset):
             as_dataset_kwargs={"shuffle_files": shuffle},
         )
 
-    def train_data(self, decoders=None) -> tf.data.Dataset:
-        return self.load(self.train_split, decoders=decoders, shuffle=True)
+    def train_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+        return (
+            self.load(self.train_split, decoders=decoders, shuffle=True),
+            self.num_examples(self.train_split),
+        )
 
-    @property
-    def num_train_examples(self) -> int:
-        return self.num_examples(self.train_split)
-
-    def validation_data(self, decoders=None) -> tf.data.Dataset:
+    def validation_data(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         if self.validation_split is None:
             raise ValueError(
                 f"Dataset {self.__class__.__name__} is not configured with a "
                 "validation split."
             )
-        return self.load(self.validation_split, decoders=decoders, shuffle=False)
+        return (
+            self.load(self.validation_split, decoders=decoders, shuffle=False),
+            self.num_examples(self.validation_split),
+        )
 
-    @property
-    def num_validation_examples(self) -> int:
-        if self.validation_split is None:
-            raise ValueError(
-                f"Dataset {self.__class__.__name__} is not configured with a "
-                "validation split."
+
+class MultiTFDSDataset(Dataset):
+    """
+    A wrapper around multiple TensorFlowDatasets datasets. This allows a model
+    to be trained on data that is combined from multiple datasets.
+    """
+
+    # A non-empty mapping from dataset names as keys to splits as values. The
+    # training data will be the concatenation of the datasets loaded from each
+    # (key, value) pair.
+    train_splits: Dict[str, str]
+
+    # As above, a mapping from dataset names as keys to splits as values. May be
+    # empty, indicating no validation data.
+    validation_splits: Dict[str, str] = {}
+
+    # The directory that the dataset is stored in.
+    data_dir: Optional[str] = None
+
+    def num_examples(self, splits) -> int:
+        """
+        Compute the total number of examples in the splits specified by the
+        dictionary `splits`.
+        """
+
+        result = 0
+        for name, split in splits:
+            result += sum(
+                tfds.builder(name, data_dir=self.data_dir).info.splits[s].num_examples
+                for s in base_splits(split)
             )
-        return self.num_examples(self.validation_split)
+        return result
+
+    def load(self, splits, decoders, shuffle) -> tf.data.Dataset:
+        result = None
+        for name, split in self.train_splits.items():
+            dataset = tfds.load(
+                name=name,
+                split=split,
+                data_dir=self.data_dir,
+                decoders=decoders,
+                as_dataset_kwargs={"shuffle_files": shuffle},
+            )
+            result = result.concatenate(dataset) if result is not None else dataset
+        return result
+
+    def train_data(self, decoders=None):
+        return (
+            self.load(self.train_splits, decoders=decoders, shuffle=True),
+            self.num_examples(self.train_splits),
+        )
+
+    def validation_data(self, decoders=None):
+        return (
+            self.load(self.validation_splits, decoders=decoders, shuffle=False),
+            self.num_examples(self.validation_splits),
+        )
