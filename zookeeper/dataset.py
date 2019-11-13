@@ -21,14 +21,9 @@ class Dataset(Component):
     A wrapper around a TensorFlowDatasets dataset.
     """
 
-    # The TensorFlowDatasets name.
+    # The TensorFlowDatasets name, which may specify a builder config and/or
+    # version, e.g. "imagenet2012:4.0.0"
     name: str
-
-    # The TensorFlowDatasets builder config.
-    builder_config: Optional[str] = None
-
-    # The TensorFlowDatasets version.
-    version: Optional[str] = None
 
     # The directory that the dataset is stored in.
     data_dir: Optional[str] = None
@@ -42,10 +37,10 @@ class Dataset(Component):
 
         # Check that the name corresponds to a valid TensorFlow dataset.
         builder_names = tfds.list_builders()
-        if self.name not in builder_names:
+        if self.name.split(":")[0].split("/")[0] not in builder_names:
             raise ValueError(
                 f"'{self.__component_name__}.name' has invalid value '{self.name}'. "
-                "Valid values:\n    " + ",\n    ".join(builder_names)
+                "Valid dataset names:\n    " + ",\n    ".join(builder_names)
             )
 
         # Check that the `train_split` is valid.
@@ -69,17 +64,9 @@ class Dataset(Component):
             )
 
     @property
-    def name_version(self):
-        builder_config = (
-            f"/{self.builder_config}" if self.builder_config is not None else ""
-        )
-        version = f":{self.version}" if self.version is not None else ""
-        return self.name + builder_config + version
-
-    @property
     def info(self):
         if not hasattr(self, "_info"):
-            self._info = tfds.builder(self.name_version, data_dir=self.data_dir).info
+            self._info = tfds.builder(self.name, data_dir=self.data_dir).info
         return self._info
 
     @property
@@ -109,7 +96,7 @@ class Dataset(Component):
         """Return a `tf.data.Dataset` object representing the requested split."""
 
         return tfds.load(
-            name=self.name_version,
+            name=self.name,
             split=split,
             data_dir=self.data_dir,
             decoders=decoders,
