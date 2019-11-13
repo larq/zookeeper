@@ -24,6 +24,9 @@ class Dataset(Component):
     # The TensorFlowDatasets name.
     name: str
 
+    # The TensorFlowDatasets builder config.
+    builder_config: Optional[str] = None
+
     # The TensorFlowDatasets version.
     version: Optional[str] = None
 
@@ -67,12 +70,16 @@ class Dataset(Component):
 
     @property
     def name_version(self):
-        return f"{self.name}:{self.version}" if self.version else self.name
+        builder_config = (
+            f"/{self.builder_config}" if self.builder_config is not None else ""
+        )
+        version = f":{self.version}" if self.version is not None else ""
+        return self.name + builder_config + version
 
     @property
     def info(self):
         if not hasattr(self, "_info"):
-            self._info = tfds.builder(self.name, data_dir=self.data_dir).info
+            self._info = tfds.builder(self.name_version, data_dir=self.data_dir).info
         return self._info
 
     @property
