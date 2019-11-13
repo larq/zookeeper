@@ -21,11 +21,9 @@ class Dataset(Component):
     A wrapper around a TensorFlowDatasets dataset.
     """
 
-    # The TensorFlowDatasets name.
+    # The TensorFlowDatasets name, which may specify a builder config and/or
+    # version, e.g. "imagenet2012:4.0.0"
     name: str
-
-    # The TensorFlowDatasets version.
-    version: Optional[str] = None
 
     # The directory that the dataset is stored in.
     data_dir: Optional[str] = None
@@ -39,10 +37,10 @@ class Dataset(Component):
 
         # Check that the name corresponds to a valid TensorFlow dataset.
         builder_names = tfds.list_builders()
-        if self.name not in builder_names:
+        if self.name.split(":")[0].split("/")[0] not in builder_names:
             raise ValueError(
                 f"'{self.__component_name__}.name' has invalid value '{self.name}'. "
-                "Valid values:\n    " + ",\n    ".join(builder_names)
+                "Valid dataset names:\n    " + ",\n    ".join(builder_names)
             )
 
         # Check that the `train_split` is valid.
@@ -64,10 +62,6 @@ class Dataset(Component):
                 f"'{self.train_split}'. Valid values:\n    "
                 + ",\n    ".join([None] + self.splits.keys())
             )
-
-    @property
-    def name_version(self):
-        return f"{self.name}:{self.version}" if self.version else self.name
 
     @property
     def info(self):
@@ -102,7 +96,7 @@ class Dataset(Component):
         """Return a `tf.data.Dataset` object representing the requested split."""
 
         return tfds.load(
-            name=self.name_version,
+            name=self.name,
             split=split,
             data_dir=self.data_dir,
             decoders=decoders,
