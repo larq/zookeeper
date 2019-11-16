@@ -1,5 +1,5 @@
 from functools import partial
-from inspect import getfullargspec
+from inspect import signature
 from typing import Tuple
 
 import tensorflow as tf
@@ -8,7 +8,7 @@ from zookeeper.component import Component
 
 
 def pass_training_kwarg(function, training=False):
-    if "training" in getfullargspec(function).args:
+    if "training" in signature(function).parameters:
         return partial(function, training=training)
     return function
 

@@ -1,6 +1,6 @@
 import pytest
 
-from zookeeper import Task
+from zookeeper.task import Task
 
 
 def test_override_call_with_args_error():

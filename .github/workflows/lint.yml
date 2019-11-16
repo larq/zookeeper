@@ -17,8 +17,10 @@ jobs:
         with:
           python-version: 3.7
       - name: Install Lint Dependencies
-        run: pip install pyflakes==2.1.1 black==19.10b0
-      - name: Run PyFlakes
-        run: pyflakes .
+        run: pip install flake8==3.7.9 black==19.10b0 pytype==2019.10.17
+      - name: Run flake8
+        run: flake8 --ignore=E203,E501,W503 --exclude build,dist
       - name: Black code style
-        run: black . --check --target-version py36 --exclude 'build/|buck-out/|dzzist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/|larq/snapshots/'
+        run: black . --check --target-version py37 --exclude 'build/|buck-out/|dzzist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/|larq/snapshots/'
+      - name: Type check with PyType
+        run: pytype -V 3.7 --keep-going --exclude build dist .pytype -- .
