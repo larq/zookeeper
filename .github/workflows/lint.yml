@@ -18,7 +18,7 @@ jobs:
           python-version: 3.7
       - name: Install project dependencies
         run: |
-          pip install tensorflow==2.0.0
+          pip install tensorflow==2.0.0 colorama==0.4.1
           pip install -e .
       - name: Install Lint Dependencies
         run: pip install flake8==3.7.9 black==19.10b0 pytype==2019.10.17
