@@ -1,6 +1,7 @@
 # This is an example of how to use Zookeeper to run a Larq BinaryNet experiment
 # on CIFAR-10.
 
+import math
 from functools import partial
 from typing import Tuple, Union
 
@@ -132,11 +133,15 @@ class BinaryNetCifar10(Experiment):
                 train_data.cache()
                 .map(partial(self.preprocessing, training=True))
                 .shuffle(10 * self.batch_size)
+                .repeat()
                 .batch(self.batch_size)
             )
             validation_data, num_validation_examples = self.dataset.validation()
             validation_data = (
-                validation_data.map(self.preprocessing).cache().batch(self.batch_size)
+                validation_data.map(self.preprocessing)
+                .cache()
+                .repeat()
+                .batch(self.batch_size)
             )
             input_shape = train_data.output_shapes[0][1:]
 
@@ -149,7 +154,9 @@ class BinaryNetCifar10(Experiment):
         model.fit(
             train_data,
             epochs=self.epochs,
+            steps_per_epoch=math.ceil(num_train_examples / self.batch_size),
             validation_data=validation_data,
+            validation_steps=math.ceil(num_validation_examples / self.batch_size),
             callbacks=self.callbacks,
         )
 
