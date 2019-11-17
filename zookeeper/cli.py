@@ -1,7 +1,8 @@
+import re
 from inspect import isclass
 
-import re
 import click
+
 from zookeeper.task import Task
 from zookeeper.utils import convert_to_snake_case, parse_value_from_string
 

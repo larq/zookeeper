@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from typing import List
 from unittest.mock import patch
 
+import pytest
 from click import unstyle
 
-import pytest
 from zookeeper.component import Component
 
 
