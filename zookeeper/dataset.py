@@ -37,11 +37,14 @@ class Dataset(Component):
 
 def base_splits(split):
     """
-    Splits can be merged, e.g. `tfds.Split.TRAIN + tfds.Split.Validation`. For
-    such composite splits, find and return a list of 'base splits'.
+    Splits can be merged, e.g. `tfds.Split.TRAIN + tfds.Split.Validation` or
+    `"train+validation"`. For such composite splits, find and return a list of
+    'base splits'.
     """
 
-    if isinstance(split, tfds.core.splits._SplitMerged):
+    if "+" in split:
+        return split.split("+")
+    elif isinstance(split, tfds.core.splits._SplitMerged):
         return base_splits(split._split1) + base_splits(split._split2)
     return [split]
 
