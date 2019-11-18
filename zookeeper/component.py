@@ -20,14 +20,20 @@ except ImportError:  # pragma: no cover
 INDENT = " " * 4
 
 
-def defined_on_self_or_parent(self, name):
+def defined_on_self_or_ancestor(self, name):
+    """
+    Test if the annotation `name` exists on `self` or a component ancestor of
+    `self` with a defined value. If so, return the instance on which `name` is
+    defined. Otherwise, return `None`.
+    """
+
     # Using `hasattr` is not safe, as it is implemented with `getattr` wrapped
     # in a try-catch (Python is terrible), so we need to check `dir(self)`.
-    if name in dir(self):
-        return True
+    if name in self.__component_annotations__ and name in dir(self):
+        return self
     if self.__component_parent__:
-        return defined_on_self_or_parent(self.__component_parent__, name)
-    return False
+        return defined_on_self_or_ancestor(self.__component_parent__, name)
+    return None
 
 
 def str_key_val(key, value, color=True, single_line=False):
@@ -176,10 +182,12 @@ class Component:
     def __getattr__(self, name):
         # This is only called if the attribute doesn't exist on the instance
         # (i.e. on `self`, on the class, or on any superclass). When this
-        # happens, if `name` is a declared annotation, search on the component
-        # parent if possible.
-        if name in self.__component_annotations__ and self.__component_parent__:
-            return getattr(self.__component_parent__, name)
+        # happens, if `name` is a declared annotation which is also declared on
+        # some ancestor with a defined value for `name`, return that value.
+        if name in self.__component_annotations__:
+            ancestor = defined_on_self_or_ancestor(self, name)
+            if ancestor is not None:
+                return getattr(ancestor, name)
         raise AttributeError
 
     def __setattr__(self, name, value):
@@ -249,7 +257,7 @@ class Component:
 
             # If there's no config value but a value is already set on the
             # instance (or a parent), no action needs to be taken.
-            elif defined_on_self_or_parent(self, k):
+            elif defined_on_self_or_ancestor(self, k) is not None:
                 pass
 
             # If we are running interactively, prompt for the missing value. Add
@@ -292,7 +300,7 @@ class Component:
 
             # If there's no config value but a value is already set on the
             # instance (or a parent), no action needs to be taken.
-            elif defined_on_self_or_parent(self, k):
+            elif defined_on_self_or_ancestor(self, k) is not None:
                 pass
 
             # If there is no concrete subclass of `v`, raise an error.
