@@ -181,7 +181,7 @@ class Component:
         if name in self.__component_annotations__ and self.__component_parent__:
             return getattr(self.__component_parent__, name)
         raise AttributeError(
-            f"Component {self.__class__.__name__} does not have any attribute {name}."
+            f"Component {self.__component_name__} does not have any attribute {name}."
         )
 
     def __setattr__(self, name, value):
