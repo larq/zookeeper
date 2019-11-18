@@ -188,7 +188,9 @@ class Component:
             ancestor = defined_on_self_or_ancestor(self, name)
             if ancestor is not None:
                 return getattr(ancestor, name)
-        raise AttributeError
+        raise AttributeError(
+            f"Component {self.__component_name__} does not have any attribute {name}."
+        )
 
     def __setattr__(self, name, value):
         # Type-check annotated values.
