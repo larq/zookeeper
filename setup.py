@@ -27,7 +27,14 @@ setup(
     extras_require={
         "tensorflow": ["tensorflow>=1.14.0"],
         "tensorflow_gpu": ["tensorflow-gpu>=1.14.0"],
-        "test": ["pytest>=4.3.1", "pytest-cov>=2.6.1"],
+        "test": [
+            "black==19.10b0",
+            "flake8~=3.7.9",
+            "isort~=4.3.21",
+            "pytest>=4.3.1",
+            "pytest-cov>=2.6.1",
+            "pytype~=2019.10.17",
+        ],
     },
     classifiers=[
         "Development Status :: 3 - Alpha",
