@@ -19,7 +19,7 @@ jobs:
       - name: Install project dependencies
         run: |
           pip install tensorflow==2.0.0 colorama==0.4.1
-          pip install -e .
+          pip install -e .[test]
       - name: Install Lint Dependencies
         run: pip install flake8==3.7.9 black==19.10b0 pytype==2019.10.17 isort==4.3.21
       - name: Run flake8
@@ -27,6 +27,6 @@ jobs:
       - name: Black code style
         run: black . --check --target-version py37 --exclude 'build/|buck-out/|dzzist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/|larq/snapshots/'
       - name: Check import order with isort
-        run: isort --check-only --use-parentheses --trailing-comma -m 3 -l 88 -rc zookeeper examples setup.py
+        run: isort --check-only --diff --use-parentheses --trailing-comma -m 3 -l 88 -o larq -rc zookeeper examples setup.py
       - name: Type check with PyType
-        run: pytype -V 3.7 --keep-going --exclude build dist .pytype -- .
+        run: pytype -V 3.7 --keep-going --exclude build dist .pytype examples -- .
