@@ -1,13 +1,13 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from zookeeper import Component
+from zookeeper.component import Component
 
 
-class Dataset(Component):
+class Dataset(Component, ABC):
     """
     An abstract base class to encapsulate a dataset. Concrete sub-classes must
     implement the `train` method, and optionally the `validation` method.
@@ -45,7 +45,7 @@ def base_splits(split):
     if "+" in split:
         return split.split("+")
     elif isinstance(split, tfds.core.splits._SplitMerged):
-        return base_splits(split._split1) + base_splits(split._split2)
+        return base_splits(split._split1) + base_splits(split._split2)  # type: ignore
     return [split]
 
 

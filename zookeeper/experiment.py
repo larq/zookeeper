@@ -1,10 +1,11 @@
-from typing import Callable, Optional, Union, List
+from typing import Callable, List, Optional, Union
 
 from tensorflow import keras
+
 from zookeeper.dataset import Dataset
-from zookeeper.task import Task
 from zookeeper.model import Model
 from zookeeper.preprocessing import Preprocessing
+from zookeeper.task import Task
 
 
 class Experiment(Task):

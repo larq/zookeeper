@@ -3,7 +3,7 @@ from typing import Tuple
 
 from tensorflow import keras
 
-from zookeeper import Component
+from zookeeper.component import Component
 
 
 class Model(Component, ABC):

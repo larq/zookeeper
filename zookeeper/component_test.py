@@ -3,10 +3,10 @@ from abc import ABC, abstractmethod
 from typing import List
 from unittest.mock import patch
 
+import pytest
 from click import unstyle
 
-import pytest
-from zookeeper import Component
+from zookeeper.component import Component
 
 
 # Specify this as a fixture because we want the class to be re-defined each

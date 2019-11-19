@@ -1,7 +1,8 @@
+import re
 from inspect import isclass
 
-import re
 import click
+
 from zookeeper.task import Task
 from zookeeper.utils import convert_to_snake_case, parse_value_from_string
 
@@ -17,7 +18,7 @@ class ConfigParam(click.ParamType):
             key, value = str_value.split("=")
             # Make sure the key is alpha-numeric (possibly with full stops).
             assert re.match("^[\\w.]+$", key)
-        except:
+        except Exception:
             self.fail(
                 "configuration parameters must be of the form 'key=value', where "
                 "the key contains only alpha-numeric characters, underscores, and "
@@ -28,7 +29,7 @@ class ConfigParam(click.ParamType):
 
         try:
             value = parse_value_from_string(value)
-        except:
+        except Exception:
             self.fail(
                 f"unable to parse value of configuration parameter {str_value}. The "
                 "only supported types are `int`, `float`, `str`, `None`, and "

@@ -2,6 +2,7 @@ from inspect import getmro, isclass
 
 from prompt_toolkit import print_formatted_text
 from typeguard import check_type
+
 from zookeeper.utils import (
     convert_to_snake_case,
     get_concrete_subclasses,
@@ -167,7 +168,7 @@ class Component:
                     f"any annotation of {self.__class__.__name__}."
                 )
 
-    def __init_subclass__(cls: type, *args, **kwargs):
+    def __init_subclass__(cls, *args, **kwargs):
         # Prohibit overriding `__init__` in subclasses.
         if cls.__init__ != Component.__init__:
             raise ValueError(

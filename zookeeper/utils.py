@@ -28,7 +28,7 @@ def parse_value_from_string(string: str):
         # Parse as string if above raises ValueError. Note that
         # syntax errors will still raise an error.
         value = str(string)
-    except:
+    except Exception:
         raise ValueError(f"Could not parse '{string}'.")
     return value
 
@@ -72,7 +72,7 @@ def prompt_for_component(component_name: str, component_cls: type) -> type:
     while True:
         try:
             response = int(response) - 1
-        except:
+        except ValueError:
             response = -1
         if 0 <= response < len(component_names):
             break
