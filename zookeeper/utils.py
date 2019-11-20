@@ -24,9 +24,8 @@ def get_concrete_subclasses(cls) -> Set[type]:
 def parse_value_from_string(string: str):
     try:
         value = literal_eval(string)
-    except ValueError:
-        # Parse as string if above raises ValueError. Note that
-        # syntax errors will still raise an error.
+    except (ValueError, SyntaxError):
+        # Parse as string if above raises a ValueError or SyntaxError.
         value = str(string)
     except Exception:
         raise ValueError(f"Could not parse '{string}'.")
