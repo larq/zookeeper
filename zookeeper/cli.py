@@ -21,8 +21,8 @@ class ConfigParam(click.ParamType):
         except Exception:
             self.fail(
                 "configuration parameters must be of the form 'key=value', where "
-                "the key contains only alpha-numeric characters, underscores, and "
-                f"full-stops, but received '{str_value}'.",
+                "the key contains only alpha-numeric characters, '_', and '.', "
+                f"and the value doesn't contain '='. Received '{str_value}'.",
                 param,
                 ctx,
             )
