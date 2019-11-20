@@ -214,7 +214,7 @@ class Component:
                     f"Attempting to set parameter '{self.__component_name__}.{name}' "
                     f"which has annotated type '{type_name_str(annotated_type)}' with "
                     f"value '{value}'."
-                )
+                ) from None
         super().__setattr__(name, value)
 
     def __str__(self):
