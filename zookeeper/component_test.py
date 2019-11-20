@@ -256,3 +256,33 @@ def test_str_and_repr(Parent):
     )
 )"""
     )
+
+
+def test_type_check():
+    class A(Component):
+        a: int = 0
+        b: float = 1.5
+        c: str = "foo"
+
+    a = A()
+
+    # Attempting to set an int parameter with a float.
+    with pytest.raises(
+        TypeError,
+        match=r"^Attempting to set parameter 'A.a' which has annotated type 'int' with value '4.5'.$",
+    ):
+        a.configure({"a": 4.5})
+
+    # Attempting to set a float parameter with a bool.
+    with pytest.raises(
+        TypeError,
+        match=r"^Attempting to set parameter 'A.b' which has annotated type 'float' with value 'True'.$",
+    ):
+        a.configure({"b": True})
+
+    # Attempting to set a string parameter with an int.
+    with pytest.raises(
+        TypeError,
+        match=r"^Attempting to set parameter 'A.c' which has annotated type 'str' with value '8'.$",
+    ):
+        a.configure({"c": 8})
