@@ -1,4 +1,5 @@
 from inspect import getmro, isclass
+from typing import Any, Dict, Optional
 
 from prompt_toolkit import print_formatted_text
 from typeguard import check_type
@@ -8,6 +9,7 @@ from zookeeper.utils import (
     get_concrete_subclasses,
     prompt_for_component,
     promt_for_param_value,
+    type_name_str,
 )
 
 try:  # pragma: no cover
@@ -149,6 +151,8 @@ class Component:
         annotations. The passed values will be set on the instance.
         """
 
+        self.__component_name__ = self.__class__.__name__
+
         # Populate `self.__component_annotations__` with all annotations set on
         # this class and all superclasses. We have to go through the MRO chain
         # and collect them in reverse order so that they are correctly
@@ -165,7 +169,7 @@ class Component:
             else:
                 raise ValueError(
                     f"Argument '{k}' passed to `__init__` does not correspond to "
-                    f"any annotation of {self.__class__.__name__}."
+                    f"any annotation of {type_name_str(self.__class__)}."
                 )
 
     def __init_subclass__(cls, *args, **kwargs):
@@ -196,8 +200,21 @@ class Component:
     def __setattr__(self, name, value):
         # Type-check annotated values.
         if name in self.__component_annotations__:
-            annotation = self.__component_annotations__[name]
-            check_type(name, value, annotation)
+            annotated_type = self.__component_annotations__[name]
+            try:
+                check_type(name, value, annotated_type)
+                # Because boolean `True` and `False` are coercible to ints and
+                # floats, `typeguard.check_type` doesn't throw if we e.g. pass
+                # `True` to a value expecting a float. This would, however,
+                # likely be a user error, so explicitly check for this.
+                if annotated_type in [float, int] and isinstance(value, bool):
+                    raise TypeError
+            except TypeError:
+                raise TypeError(
+                    f"Attempting to set parameter '{self.__component_name__}.{name}' "
+                    f"which has annotated type '{type_name_str(annotated_type)}' with "
+                    f"value '{value}'."
+                ) from None
         super().__setattr__(name, value)
 
     def __str__(self):
@@ -215,7 +232,13 @@ class Component:
         )
         return f"{self.__class__.__name__}({params})"
 
-    def configure(self, conf, name=None, parent=None, interactive=False):
+    def configure(
+        self,
+        conf: Dict[str, Any],
+        name: Optional[str] = None,
+        parent: Optional["Component"] = None,
+        interactive: bool = False,
+    ):
         """
         Configure the component instance with parameters from the `conf` dict.
 
@@ -224,7 +247,8 @@ class Component:
         or those passed via `__init__`.
         """
 
-        self.__component_name__ = name or self.__class__.__name__
+        if name is not None:
+            self.__component_name__ = name
         self.__component_parent__ = parent
 
         # Divide the annotations into those which are and those which are not
@@ -281,7 +305,7 @@ class Component:
         # Process nested component annotations
         for k, v in component_annotations:
             param_name = f"{self.__component_name__}.{k}"
-            param_type_name = v.__qualname__
+            param_type_name = type_name_str(v)
             concrete_subclasses = get_concrete_subclasses(v)
 
             # The value from the `conf` dict takes priority.
@@ -319,7 +343,7 @@ class Component:
             elif len(concrete_subclasses) == 1:
                 component_cls = list(concrete_subclasses)[0]
                 print_formatted_text(
-                    f"'{component_cls.__qualname__}' is the only concrete component "
+                    f"'{type_name_str(component_cls)}' is the only concrete component "
                     "class that satisfies the type of the annotated parameter "
                     f"'{param_name}'. Using an instance of this class by default."
                 )
@@ -344,7 +368,7 @@ class Component:
                     f"Annotated parameter '{param_name}' of type '{param_type_name}' "
                     f"has no configured value. Please configure '{param_name}' with one "
                     f"of the following concrete subclasses of '{param_type_name}':\n    "
-                    + "\n    ".join(list(c.__qualname__ for c in concrete_subclasses))
+                    + "\n    ".join(list(type_name_str(c) for c in concrete_subclasses))
                 )
 
             # Configure the sub-component. The configuration we use consists of

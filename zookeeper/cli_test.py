@@ -1,8 +1,8 @@
 import pytest
 from click.testing import CliRunner
 
-from zookeeper import Task
 from zookeeper.cli import add_task_to_cli, cli
+from zookeeper.task import Task
 
 
 @pytest.fixture
