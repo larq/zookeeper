@@ -51,10 +51,14 @@ def Parent():
     return Parent
 
 
-def test_override_init_error():
-    # Defining a subclass which overrides `__init__` should raise a ValueError.
+def test_positional_args_init_error():
+    # Defining a subclass which overrides `__init__` with positional arguments
+    # should raise a ValueError.
 
-    with pytest.raises(ValueError, match=r"^Overriding `__init__` in component"):
+    with pytest.raises(
+        ValueError,
+        match=r"^The `__init__` method of a `Component` sub-class must not accept",
+    ):
 
         class C(Component):
             def __init__(self, c, **kwargs):

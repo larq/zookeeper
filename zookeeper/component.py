@@ -1,4 +1,4 @@
-from inspect import getmro, isclass
+import inspect
 from typing import Any, Dict, Optional
 
 from prompt_toolkit import print_formatted_text
@@ -145,6 +145,9 @@ class Component:
     # superclasses. This is populated in `__init__`.
     __component_annotations__ = {}
 
+    # Whether or not the component has been configured.
+    __component_configured__ = False
+
     def __init__(self, **kwargs):
         """
         `kwargs` may only contain argument names corresponding to component
@@ -158,7 +161,7 @@ class Component:
         # and collect them in reverse order so that they are correctly
         # overriden.
         annotations = {}
-        for base_class in reversed(getmro(self.__class__)):
+        for base_class in reversed(inspect.getmro(self.__class__)):
             annotations.update(getattr(base_class, "__annotations__", {}))
         annotations.update(getattr(self, "__annotations__", {}))
         self.__component_annotations__ = annotations
@@ -173,17 +176,23 @@ class Component:
                 )
 
     def __init_subclass__(cls, *args, **kwargs):
-        # Prohibit overriding `__init__` in subclasses.
-        if cls.__init__ != Component.__init__:
-            raise ValueError(
-                f"Overriding `__init__` in component '{type_name_str(cls)}'. "
-                "`Component.__init__` must not be overriden, as doing so breaks "
-                "the built-in configuration mechanism. It should be unnecessary "
-                "to override `__init__`: the default `Component.__init__` "
-                "implementation accepts keyword-arguments matching annoted class "
-                "attributes and sets the corresponding attribute values on the "
-                "instance."
-            )
+        # Ensure that `__init__` does not accept any positional arguments.
+        for i, (name, param) in enumerate(
+            inspect.signature(cls.__init__).parameters.items()
+        ):
+            if (
+                i > 0
+                and param.default == inspect.Parameter.empty
+                and param.kind
+                not in [inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD]
+            ):
+                raise ValueError(
+                    "The `__init__` method of a `Component` sub-class must not accept "
+                    "any positional arguments, as the component configuration process "
+                    "requires component classes to be instantiable without arguments. "
+                    f"Please set a default value for the parameter '{name}' of "
+                    f"`{type_name_str(cls)}.__init__`."
+                )
 
     def __getattr__(self, name):
         # This is only called if the attribute doesn't exist on the instance
@@ -249,6 +258,12 @@ class Component:
         or those passed via `__init__`.
         """
 
+        # Configuration can only happen once.
+        if self.__component_configured__:
+            raise ValueError(
+                f"Component '{self.__component_name__}' has already been configured."
+            )
+
         if name is not None:
             self.__component_name__ = name
         self.__component_parent__ = parent
@@ -265,19 +280,19 @@ class Component:
             # e.g. `typing.List[float]`.
             #
             # In Python 3.7+, this will cause `issubclass(v, Component)` to
-            # throw, but `isclass(v)` will be `False`.
+            # throw, but `inspect.isclass(v)` will be `False`.
             #
-            # In Python 3.6, `isclass(v)` will be `True`, but fortunately
-            #  `issubclass(v, Component)` won't throw.
-            if isclass(v) and issubclass(v, Component):
+            # In Python 3.6, `inspect.isclass(v)` will be `True`, but
+            # fortunately `issubclass(v, Component)` won't throw.
+            if inspect.isclass(v) and issubclass(v, Component):
                 component_annotations.append((k, v))
             else:
                 non_component_annotations.append((k, v))
 
-        # Process non-component annotations
+        # Process non-component annotations.
         for k, v in non_component_annotations:
             param_name = f"{self.__component_name__}.{k}"
-            param_type_name = v.__name__ if isclass(v) else v
+            param_type_name = v.__name__ if inspect.isclass(v) else v
 
             # The value from the `conf` dict takes priority.
             if k in conf:
@@ -285,7 +300,8 @@ class Component:
                 setattr(self, k, param_value)
 
             # If there's no config value but a value is already set on the
-            # instance (or a parent), no action needs to be taken.
+            # instance (or a parent), no action needs to be taken. `__getattr__`
+            # is overriden to give the instance access to such values.
             elif defined_on_self_or_ancestor(self, k) is not None:
                 pass
 
@@ -304,7 +320,7 @@ class Component:
                     f"'{param_name}' of type '{param_type_name}'."
                 )
 
-        # Process nested component annotations
+        # Process nested component annotations.
         for k, v in component_annotations:
             param_name = f"{self.__component_name__}.{k}"
             param_type_name = type_name_str(v)
@@ -328,7 +344,8 @@ class Component:
                 setattr(self, k, instance)
 
             # If there's no config value but a value is already set on the
-            # instance (or a parent), no action needs to be taken.
+            # instance (or a parent), no action needs to be taken. `__getattr__`
+            # is overriden to give the instance access to such values.
             elif defined_on_self_or_ancestor(self, k) is not None:
                 pass
 
@@ -373,20 +390,27 @@ class Component:
                     + "\n    ".join(list(type_name_str(c) for c in concrete_subclasses))
                 )
 
-            # Configure the sub-component. The configuration we use consists of
-            # all non-scoped keys and any keys scoped to `k`, where the keys
-            # scoped to `k` override the non-scoped keys.
-            non_scoped_conf = {a: b for a, b in conf.items() if "." not in a}
-            k_scoped_conf = {
-                a[len(f"{k}.") :]: b for a, b in conf.items() if a.startswith(f"{k}.")
-            }
-            nested_conf = {**non_scoped_conf, **k_scoped_conf}
-            getattr(self, k).configure(
-                nested_conf, name=param_name, parent=self, interactive=interactive
-            )
+        # Recursively configure the nested sub-components.
+        for k, v in component_annotations:
+            sub_component = getattr(self, k)
+            if not sub_component.__component_configured__:
+                # Configure the sub-component. The configuration we use consists
+                # of all non-scoped keys and any keys scoped to `k`, where the
+                # keys scoped to `k` override the non-scoped keys.
+                non_scoped_conf = {a: b for a, b in conf.items() if "." not in a}
+                k_scoped_conf = {
+                    a[len(f"{k}.") :]: b
+                    for a, b in conf.items()
+                    if a.startswith(f"{k}.")
+                }
+                nested_conf = {**non_scoped_conf, **k_scoped_conf}
+                sub_component.configure(
+                    nested_conf, name=param_name, parent=self, interactive=interactive
+                )
 
-        # Validate all parameters.
         self.validate_configuration()
+
+        self.__component_configured__ = True
 
     def validate_configuration(self):
         """
