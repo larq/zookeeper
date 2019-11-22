@@ -1,0 +1,14 @@
+name: Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  Labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Match PR Label
+        uses: zwaldowski/match-label-action@v1
+        with:
+          allowed: bug, documentation, internal-improvement, dependencies, feature, breaking-change, skip-changelog
