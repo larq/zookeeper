@@ -169,19 +169,20 @@ class Component:
             else:
                 raise ValueError(
                     f"Argument '{k}' passed to `__init__` does not correspond to "
-                    f"any annotation of {type_name_str(self.__class__)}."
+                    f"any annotation of '{type_name_str(self.__class__)}'."
                 )
 
     def __init_subclass__(cls, *args, **kwargs):
         # Prohibit overriding `__init__` in subclasses.
         if cls.__init__ != Component.__init__:
             raise ValueError(
-                f"Overriding `__init__` in component {cls}. `Component.__init__` "
-                "must not be overriden, as doing so breaks the built-in "
-                "hydration mechanism. It should be unnecessary to override "
-                "`__init__`: the default `Component.__init__` implementation "
-                "accepts keyword-arguments matching defined class attributes "
-                "and sets the corresponding attribute values on the instance."
+                f"Overriding `__init__` in component '{type_name_str(cls)}'. "
+                "`Component.__init__` must not be overriden, as doing so breaks "
+                "the built-in configuration mechanism. It should be unnecessary "
+                "to override `__init__`: the default `Component.__init__` "
+                "implementation accepts keyword-arguments matching annoted class "
+                "attributes and sets the corresponding attribute values on the "
+                "instance."
             )
 
     def __getattr__(self, name):
@@ -194,7 +195,8 @@ class Component:
             if ancestor is not None:
                 return getattr(ancestor, name)
         raise AttributeError(
-            f"Component {self.__component_name__} does not have any attribute {name}."
+            f"Component '{self.__component_name__}' does not have any attribute "
+            f"'{name}'."
         )
 
     def __setattr__(self, name, value):
