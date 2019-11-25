@@ -180,7 +180,7 @@ class MultiTFDSDataset(Dataset):
 
         return sum(
             tfds.builder(name, data_dir=self.data_dir).info.splits[s].num_examples
-            for name, split in splits
+            for name, split in splits.items()
             for s in base_splits(split)
         )
 
