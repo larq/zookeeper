@@ -392,6 +392,7 @@ class Component:
 
         # Recursively configure the nested sub-components.
         for k, v in component_annotations:
+            param_name = f"{self.__component_name__}.{k}"
             sub_component = getattr(self, k)
             if not sub_component.__component_configured__:
                 # Configure the sub-component. The configuration we use consists
