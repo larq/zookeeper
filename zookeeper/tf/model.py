@@ -3,10 +3,8 @@ from typing import Tuple
 
 from tensorflow import keras
 
-from zookeeper.component import Component
 
-
-class Model(Component, ABC):
+class Model(ABC):
     """
     A wrapper around a Keras model. Subclasses must implement `build` to
     build and return a Keras model.

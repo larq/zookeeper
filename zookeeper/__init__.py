@@ -1,16 +1,3 @@
-from zookeeper.component import Component
-from zookeeper.dataset import Dataset, TFDSDataset
-from zookeeper.experiment import Experiment
-from zookeeper.model import Model
-from zookeeper.preprocessing import Preprocessing
-from zookeeper.task import Task
+from zookeeper.core import component, task
 
-__all__ = [
-    "Component",
-    "Dataset",
-    "Experiment",
-    "Model",
-    "Preprocessing",
-    "Task",
-    "TFDSDataset",
-]
+__all__ = ["component", "task"]

@@ -4,10 +4,8 @@ from typing import Dict, Optional, Tuple
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from zookeeper.component import Component
 
-
-class Dataset(Component, ABC):
+class Dataset(ABC):
     """
     An abstract base class to encapsulate a dataset. Concrete sub-classes must
     implement the `train` method, and optionally the `validation` method.
@@ -30,7 +28,7 @@ class Dataset(Component, ABC):
         """
 
         raise ValueError(
-            f"Dataset '{self.__component_name__}' is not configured with validation "
+            f"Dataset '{self.__class__.__name__}' is not configured with validation "
             "data."
         )
 
@@ -64,37 +62,6 @@ class TFDSDataset(Dataset):
     # Train and validation splits. A validation split is not required.
     train_split: str
     validation_split: Optional[str] = None
-
-    def validate_configuration(self):
-        super().validate_configuration()
-
-        # Check that the name corresponds to a valid TensorFlow dataset.
-        builder_names = tfds.list_builders()
-        if self.name.split(":")[0].split("/")[0] not in builder_names:
-            raise ValueError(
-                f"'{self.__component_name__}.name' has invalid value '{self.name}'. "
-                "Valid dataset names:\n    " + ",\n    ".join(builder_names)
-            )
-
-        # Check that the `train_split` is valid.
-        if self.train_split is None or any(
-            s not in self.splits for s in base_splits(self.train_split)
-        ):
-            raise ValueError(
-                f"'{self.__component_name__}.train_split' has invalid value "
-                f"'{self.train_split}'. Valid values:\n    "
-                + ",\n    ".join(self.splits.keys())
-            )
-
-        # Check that `validation_split` is valid (`None` is allowed).
-        if self.validation_split is not None and any(
-            s not in self.splits for s in base_splits(self.train_split)
-        ):
-            raise ValueError(
-                f"'{self.__component_name__}.train_split' has invalid value "
-                f"'{self.train_split}'. Valid values:\n    "
-                + ",\n    ".join([None] + self.splits.keys())
-            )
 
     @property
     def info(self):
