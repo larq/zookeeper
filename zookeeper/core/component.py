@@ -23,7 +23,7 @@ INDENT = " " * 4
 
 
 def str_key_val(key, value, color=True, single_line=False):
-    if is_component_class(value):
+    if is_component_class(value.__class__):
         if single_line:
             value = repr(value)
         else:
@@ -394,7 +394,10 @@ def configure(
     for field_name, field_type in instance.__component_fields__.items():
         field_value = getattr(instance, field_name)
         full_name = f"{instance.__component_name__}.{field_name}"
-        if is_component_class(field_value) and not field_value.__component_configured__:
+        if (
+            is_component_class(field_value.__class__)
+            and not field_value.__component_configured__
+        ):
             # Configure the nested sub-component. The configuration we use
             # consists of all non-scoped keys and any keys scoped to
             # `field_name`, where the keys scoped to `field_name` override the
