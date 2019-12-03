@@ -55,4 +55,4 @@ def task(cls):
         configure(task_instance, config, interactive=interactive)
         task_instance.run()
 
-    return task
+    return cls

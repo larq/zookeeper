@@ -41,7 +41,10 @@ def str_key_val(key, value, color=True, single_line=False):
 
 
 def is_component_class(cls):
-    return "__component_name__" in cls.__dict__
+    try:
+        return "__component_name__" in cls.__dict__
+    except AttributeError:
+        return False
 
 
 def generate_subclasses(cls):
