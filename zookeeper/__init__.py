@@ -1,3 +1,3 @@
-from zookeeper.core import component, task
+from zookeeper.core import cli, component, task
 
-__all__ = ["component", "task"]
+__all__ = ["component", "cli", "task"]
