@@ -128,7 +128,7 @@ def getattribute_wrapper(getattribute_fn):
                 raise EmptyFieldError(instance, name)
             value = object.__getattribute__(instance, name)
             if isinstance(value, InheritedFieldValue):
-                return getattr(value.ancestor, name)
+                value = getattr(value.ancestor, name)
             return value
         else:
             return getattribute_fn(instance, name)
@@ -330,8 +330,9 @@ def configure(
             )
 
         # If there's no config value but a value is already set on the instance,
-        # we don't need to do anything directly.
-        elif hasattr(instance, field_name):
+        # we don't need to do anything directly. `hasattr` isn't safe so we have
+        # to check directly.
+        elif field_name in dir(instance):
             # Add a placeholder to the `conf` dict to so this value can be
             # accessed by sub-components.
             conf[field_name] = InheritedFieldValue(instance, is_overriden=False)
