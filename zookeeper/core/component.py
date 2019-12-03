@@ -23,7 +23,7 @@ INDENT = " " * 4
 
 
 def str_key_val(key, value, color=True, single_line=False):
-    if is_component(value):
+    if is_component_class(value):
         if single_line:
             value = repr(value)
         else:
@@ -40,8 +40,8 @@ def str_key_val(key, value, color=True, single_line=False):
     )
 
 
-def is_component(instance):
-    return hasattr(instance, "__component_name__")
+def is_component_class(cls):
+    return "__component_name__" in cls.__dict__
 
 
 def generate_subclasses(cls):
@@ -58,7 +58,7 @@ def generate_component_subclasses(cls):
     """Find component subclasses of `cls`."""
 
     for subclass in generate_subclasses(cls):
-        if is_component(subclass) and not inspect.isabstract(subclass):
+        if is_component_class(subclass) and not inspect.isabstract(subclass):
             yield subclass
 
 
@@ -213,7 +213,7 @@ def component(cls):
     if inspect.isabstract(cls):
         raise ValueError("Abstract classes cannot be decorated with @component.")
 
-    if is_component(cls):
+    if is_component_class(cls):
         raise ValueError(
             f"The class {cls} is already a component; the @component decorator cannot "
             "be applied again."
@@ -391,7 +391,7 @@ def configure(
     for field_name, field_type in instance.__component_fields__.items():
         field_value = getattr(instance, field_name)
         full_name = f"{instance.__component_name__}.{field_name}"
-        if is_component(field_value) and not field_value.__component_configured__:
+        if is_component_class(field_value) and not field_value.__component_configured__:
             # Configure the nested sub-component. The configuration we use
             # consists of all non-scoped keys and any keys scoped to
             # `field_name`, where the keys scoped to `field_name` override the
