@@ -363,7 +363,7 @@ def configure(
 
             # Add a placeholder to the `conf` dict to so this value can be
             # accessed by sub-components.
-            conf[field_name] = InheritedFieldValue(instance, is_overriden=True)
+            conf[field_name] = InheritedFieldValue(instance, is_overriden=False)
 
         # If we are running interactively, prompt for a value.
         elif interactive:
@@ -381,7 +381,7 @@ def configure(
 
             # Add a placeholder to the `conf` dict to so this value can be
             # accessed by sub-components.
-            conf[field_name] = InheritedFieldValue(instance, is_overriden=True)
+            conf[field_name] = InheritedFieldValue(instance, is_overriden=False)
 
         # Otherwise, raise an appropriate error.
         else:
