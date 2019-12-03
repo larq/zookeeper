@@ -299,7 +299,6 @@ def configure(
         )
         component_subclasses = list(generate_component_subclasses(field_type))
 
-        # The value from the `conf` dict takes priority.
         if field_name in conf:
             field_value = conf[field_name]
             # The configuration value could be a string specifying a component
@@ -314,15 +313,24 @@ def configure(
                     ):
                         field_value = subclass()
                         break
-            setattr(instance, field_name, field_value)
 
-            # Add a placeholder to the `conf` dict to so this value can be
-            # accessed by sub-components.
+            # The only scenario in which we don't set `field_value` on the
+            # instance is if a value for `field_name` already exists and
+            # `field_value` is a non-overriden `InheritedFieldValue`.
+            if not (
+                field_name in dir(instance)
+                and isinstance(field_value, InheritedFieldValue)
+                and not field_value.is_overriden
+            ):
+                setattr(instance, field_name, field_value)
+
+            # We set a placeholder in `conf` which points any subcomponents to
+            # `instance` if they inherit `field_name`.
             conf[field_name] = InheritedFieldValue(
                 instance,
                 is_overriden=(
-                    # Either the field value is _not_ inherited (i.e. must be
-                    # a configuration value being passed in directly)...
+                    # Either the field value is _not_ inherited (i.e. must
+                    # be a configuration value being passed in directly)...
                     not isinstance(field_value, InheritedFieldValue)
                     # ...or it is inherited from an overriden value.
                     or field_value.is_overriden
