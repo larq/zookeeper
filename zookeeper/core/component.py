@@ -230,7 +230,7 @@ def init_wrapper(init_fn):
 
 def dir_wrapper(dir_fn):
     def __component_dir__(instance):
-        return set(dir_fn(instance)).union(set(instance.__component_fields__.keys()))
+        return set(dir_fn(instance)) | set(instance.__component_fields__.keys())
 
     return __component_dir__
 
