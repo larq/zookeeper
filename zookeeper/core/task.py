@@ -20,9 +20,7 @@ def task(cls):
 
     cls = component(cls)
 
-    if "run" not in dir(cls) or not (
-        inspect.isfunction(cls.run) or inspect.ismethod(cls.run)
-    ):
+    if not (hasattr(cls, "run") and callable(cls.run)):
         raise ValueError("Classes decorated with @task must define a `run` method.")
 
     # Enforce argument-less `run`
