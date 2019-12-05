@@ -255,12 +255,6 @@ def getattribute_wrapper(getattr_fn):
 
 def setattr_wrapper(setattr_fn):
     def __component_setattr__(instance, name, value):
-        if name == "_layers":
-            print()
-            print(instance)
-            print(name)
-            print(value)
-            print()
         if name in instance.__component_fields__:
             raise ValueError(
                 "Setting component field values directly is prohibited. Use Zookeeper "
