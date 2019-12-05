@@ -4,8 +4,6 @@ from typing import Tuple
 
 import tensorflow as tf
 
-from zookeeper.component import Component
-
 
 def pass_training_kwarg(function, training=False):
     if "training" in signature(function).parameters:
@@ -13,7 +11,7 @@ def pass_training_kwarg(function, training=False):
     return function
 
 
-class Preprocessing(Component):
+class Preprocessing:
     """A wrapper around `tf.data` preprocessing."""
 
     def input(self, data, training) -> tf.Tensor:
