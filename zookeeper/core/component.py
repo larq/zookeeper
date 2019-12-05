@@ -65,6 +65,62 @@ def generate_component_subclasses(cls):
             yield subclass
 
 
+class EmptyFieldError(AttributeError):
+    def __init__(self, component, field_name):
+        message = (
+            f"The component `{component.__component_name__}` has no default or "
+            f"configured value for field `{field_name}`. Please configure the "
+            "component to provide a value."
+        )
+        super().__init__(message)
+
+
+class Field:
+    def __init__(self, annotated_type):
+        self.annotated_type = annotated_type
+
+
+class EmptyField(Field):
+    pass
+
+
+class InheritedField(Field):
+    def __init__(self, annotated_type, is_overriden=False):
+        super().__init__(annotated_type)
+        self.is_overriden = is_overriden
+
+
+class NonEmptyField(Field):
+    def __init__(self, annotated_type, is_overriden):
+        super().__init__(annotated_type)
+        self.is_overriden = is_overriden
+
+
+OVERRIDEN_CONF_VALUE = object()
+NON_OVERRIDEN_CONF_VALUE = object()
+
+
+def set_field_value(instance, name, value):
+    assert not instance.__component_configured__
+    assert name in instance.__component_fields__
+    field = instance.__component_fields__[name]
+
+    if value == OVERRIDEN_CONF_VALUE:
+        instance.__component_fields__[name] = InheritedField(
+            annotated_type=field.annotated_type, is_overriden=True
+        )
+    elif value == NON_OVERRIDEN_CONF_VALUE:
+        if isinstance(field, EmptyField):
+            instance.__component_fields__[name] = InheritedField(
+                annotated_type=field.annotated_type, is_overriden=False
+            )
+    else:
+        object.__setattr__(instance, name, value)
+        instance.__component_fields__[name] = NonEmptyField(
+            annotated_type=field.annotated_type, is_overriden=False
+        )
+
+
 def __component_repr__(instance):
     fields = ", ".join(
         [
@@ -87,53 +143,109 @@ def __component_str__(instance):
     return f"{instance.__class__.__name__}(\n{INDENT}{fields}\n)"
 
 
-def __component_init__(instance, **kwargs):
-    for name, value in kwargs.items():
-        if name in instance.__component_fields__:
-            setattr(instance, name, value)
-        else:
+def init_wrapper(init_fn):
+    # Components need to be instantiable without arguments, so check that
+    # `init_fn` does not accept any positional arguments without default values.
+    for i, (name, param) in enumerate(inspect.signature(init_fn).parameters.items()):
+        if (
+            i > 0
+            and param.default == inspect.Parameter.empty
+            and param.kind
+            not in [inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD]
+        ):
             raise ValueError(
-                f"Argument '{name}' does not correspond to any annotated field "
-                f"of '{type_name_str(instance.__class__)}'."
+                "The `__init__` method of a component must not accept any "
+                "positional arguments, as the component configuration process "
+                "requires component classes to be instantiable without arguments."
             )
 
+    def __component_init__(instance, **kwargs):
+        # Fake 'super' call.
+        if init_fn != object.__init__:
+            init_fn(instance, **kwargs)
 
-class EmptyFieldError(AttributeError):
-    def __init__(self, component, field_name):
-        message = (
-            f"The component `{component.__component_name__}` has no default or "
-            f"configured value for field `{field_name}`. Please configure the "
-            "component to provide a value."
-        )
-        super().__init__(message)
+        instance.__component_fields__ = {}
+
+        # Populate `__component_fields__` with all annotations set on this class
+        # and all superclasses. We have to go through the MRO chain and collect
+        # them in reverse order so that they are correctly overriden.
+        annotations = {}
+        for base_class in reversed(inspect.getmro(instance.__class__)):
+            annotations.update(getattr(base_class, "__annotations__", {}))
+        instance.__component_fields__ = {}
+        for name, annotated_type in annotations.items():
+            if name in object.__dir__(instance):
+                instance.__component_fields__[name] = NonEmptyField(
+                    annotated_type, is_overriden=False
+                )
+            else:
+                instance.__component_fields__[name] = EmptyField(annotated_type)
+
+        if init_fn == object.__init__:
+            for name, value in kwargs.items():
+                if name in instance.__component_fields__:
+                    set_field_value(instance, name, value)
+                else:
+                    raise ValueError(
+                        f"Argument '{name}' does not correspond to any annotated field "
+                        f"of '{type_name_str(instance.__class__)}'."
+                    )
+
+    return __component_init__
 
 
-class InheritedFieldValue:
-    def __init__(self, ancestor, is_overriden):
-        self.ancestor = ancestor
-        self.is_overriden = is_overriden
+def dir_wrapper(dir_fn):
+    def __component_dir__(instance):
+        # FIXME
+        return set(dir_fn(instance)) + set(instance.__component_fields__.keys())
+
+    return __component_dir__
 
 
-def getattribute_wrapper(getattribute_fn):
-    """
-    Get a value for the field `name` on an instance or a component ancestor,
-    if the value is inherited.
-    """
-
-    def wrapped_fn(instance, name):
-        if name in object.__getattribute__(instance, "__component_fields__"):
-            # We can't use `hasattr`, because that would call `__getattribute__`
-            # and cause infinite recursion.
-            if name not in dir(instance):
+def getattribute_wrapper(getattr_fn):
+    def __component_getattr__(instance, name):
+        component_fields = object.__getattribute__(instance, "__component_fields__")
+        if name in component_fields:
+            field = component_fields[name]
+            if isinstance(field, EmptyField):
                 raise EmptyFieldError(instance, name)
-            value = object.__getattribute__(instance, name)
-            if isinstance(value, InheritedFieldValue):
-                value = getattr(value.ancestor, name)
-            return value
+            if isinstance(field, NonEmptyField):
+                return object.__getattribute__(instance, name)
+            if isinstance(field, InheritedField):
+                return getattr(instance.__component_parent__, name)
         else:
-            return getattribute_fn(instance, name)
+            return getattr_fn(instance, name)
+        raise AttributeError
 
-    return wrapped_fn
+    return __component_getattr__
+
+
+def setattr_wrapper(setattr_fn):
+    def __component_setattr__(instance, name, value):
+        if name == "_layers":
+            print()
+            print(instance)
+            print(name)
+            print(value)
+            print()
+        if name in instance.__component_fields__:
+            raise ValueError(
+                "Setting component field values directly is prohibited. Use Zookeeper "
+                "component configuration to set field values."
+            )
+        else:
+            return setattr_fn(instance, name, value)
+
+    return __component_setattr__
+
+
+def delattr_wrapper(delattr_fn):
+    def __component_delattr__(instance, name):
+        if name in instance.__component_fields__:
+            raise ValueError("Deleting component fields is prohibited.")
+        return delattr_fn(instance, name)
+
+    return __component_delattr__
 
 
 def component(cls):
@@ -223,43 +335,22 @@ def component(cls):
         )
 
     cls.__component_name__ = convert_to_snake_case(cls.__name__)
+    cls.__component_parent__ = None
     cls.__component_configured__ = False
-
-    # Populate `__component_fields__` with all annotations set on this class and
-    # all superclasses. We have to go through the MRO chain and collect them in
-    # reverse order so that they are correctly overriden.
     cls.__component_fields__ = {}
-    for base_class in reversed(inspect.getmro(cls)):
-        cls.__component_fields__.update(getattr(base_class, "__annotations__", {}))
-    cls.__component_fields__.update(getattr(cls, "__annotations__", {}))
 
-    # Override `__getattribute__` to allow components to get field values from
-    # ancestors.
-    cls.__getattribute__ = getattribute_wrapper(cls.__getattribute__)  # type: ignore
+    # Override `__getattribute__`, `__setattr__`, and `__delattr__` to correctly
+    # manage getting, setting, and deleting component fields.
+    cls.__getattribute__ = getattribute_wrapper(cls.__getattribute__)
+    cls.__setattr__ = setattr_wrapper(cls.__setattr__)
+    cls.__delattr__ = delattr_wrapper(cls.__delattr__)
 
-    if cls.__init__ != object.__init__:
-        # If the class overrides `__init__`, we check that `__init__` does not
-        # accept any positional arguments.
-        for i, (name, param) in enumerate(
-            inspect.signature(cls.__init__).parameters.items()
-        ):
-            if (
-                i > 0
-                and param.default == inspect.Parameter.empty
-                and param.kind
-                not in [inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD]
-            ):
-                raise ValueError(
-                    "The `__init__` method of a component must not accept any "
-                    "positional arguments, as the component configuration process "
-                    "requires component classes to be instantiable without arguments. "
-                    f"Please set a default value for the parameter '{name}' of "
-                    f"`{type_name_str(cls)}.__init__`."
-                )
-    else:
-        # Otherwise, we set an `__init__` which will set any field values passed
-        # in as keyword args.
-        cls.__init__ = __component_init__
+    # Override `__dir__` so that field names are included.
+    cls.__dir__ = dir_wrapper(cls.__dir__)
+
+    # Override `__init__` to perform component initialisation and (potentially)
+    # set key-word args as field values.
+    cls.__init__ = init_wrapper(cls.__init__)
 
     # Components should have nice `__str__` and `__repr__` methods.
     cls.__str__ = __component_str__
@@ -292,12 +383,14 @@ def configure(
         instance.__component_name__ = name
 
     # Set the correct value for each field.
-    for field_name, field_type in instance.__component_fields__.items():
+    for field_name, field in instance.__component_fields__.items():
         full_name = f"{instance.__component_name__}.{field_name}"
         field_type_name = (
-            field_type.__name__ if inspect.isclass(field_type) else str(field_type)
+            field.annotated_type.__name__
+            if inspect.isclass(field.annotated_type)
+            else str(field.annotated_type)
         )
-        component_subclasses = list(generate_component_subclasses(field_type))
+        component_subclasses = list(generate_component_subclasses(field.annotated_type))
 
         if field_name in conf:
             field_value = conf[field_name]
@@ -314,36 +407,22 @@ def configure(
                         field_value = subclass()
                         break
 
-            # The only scenario in which we don't set `field_value` on the
-            # instance is if a value for `field_name` already exists and
-            # `field_value` is a non-overriden `InheritedFieldValue`.
-            if not (
-                field_name in dir(instance)
-                and isinstance(field_value, InheritedFieldValue)
-                and not field_value.is_overriden
-            ):
-                setattr(instance, field_name, field_value)
+            set_field_value(instance, field_name, field_value)
 
-            # We set a placeholder in `conf` which points any subcomponents to
-            # `instance` if they inherit `field_name`.
-            conf[field_name] = InheritedFieldValue(
-                instance,
-                is_overriden=(
-                    # Either the field value is _not_ inherited (i.e. must
-                    # be a configuration value being passed in directly)...
-                    not isinstance(field_value, InheritedFieldValue)
-                    # ...or it is inherited from an overriden value.
-                    or field_value.is_overriden
-                ),
-            )
+            # If this is a 'raw' value, add a placeholder to `conf` so that it
+            # gets picked up correctly in sub-components.
+            if (
+                field_value != OVERRIDEN_CONF_VALUE
+                and field_value != NON_OVERRIDEN_CONF_VALUE
+            ):
+                conf[field_name] = OVERRIDEN_CONF_VALUE
 
         # If there's no config value but a value is already set on the instance,
-        # we don't need to do anything directly. `hasattr` isn't safe so we have
-        # to check directly.
-        elif field_name in dir(instance):
-            # Add a placeholder to the `conf` dict to so this value can be
-            # accessed by sub-components.
-            conf[field_name] = InheritedFieldValue(instance, is_overriden=False)
+        # we only need to add a placeholder to `conf` to make sure that the
+        # value will be accessible from sub-components. `hasattr` isn't safe so
+        # we have to check membership directly.
+        elif field_name in object.__dir__(instance):
+            conf[field_name] = NON_OVERRIDEN_CONF_VALUE
 
         # If there is only one concrete component subclass of the annotated
         # type, we assume the user must intend to use that subclass, and so
@@ -359,11 +438,11 @@ def configure(
             # positional arguments without defaults.
             field_value = component_cls()
 
-            setattr(instance, field_name, field_value)
+            set_field_value(instance, field_name, field_value)
 
-            # Add a placeholder to the `conf` dict to so this value can be
-            # accessed by sub-components.
-            conf[field_name] = InheritedFieldValue(instance, is_overriden=False)
+            # Add a placeholder to `conf` to so that this value can be accessed
+            # by sub-components.
+            conf[field_name] = NON_OVERRIDEN_CONF_VALUE
 
         # If we are running interactively, prompt for a value.
         elif interactive:
@@ -375,13 +454,13 @@ def configure(
                 # positional arguments without defaults.
                 field_value = component_cls()
             else:
-                field_value = prompt_for_value(full_name, field_type)
+                field_value = prompt_for_value(full_name, field.annotated_type)
 
-            setattr(instance, field_name, field_value)
+            set_field_value(instance, field_name, field_value)
 
-            # Add a placeholder to the `conf` dict to so this value can be
-            # accessed by sub-components.
-            conf[field_name] = InheritedFieldValue(instance, is_overriden=False)
+            # Add a placeholder to `conf` so that this value can be accessed by
+            # sub-components.
+            conf[field_name] = OVERRIDEN_CONF_VALUE
 
         # Otherwise, raise an appropriate error.
         else:
@@ -403,10 +482,15 @@ def configure(
     for field_name, field_type in instance.__component_fields__.items():
         field_value = getattr(instance, field_name)
         full_name = f"{instance.__component_name__}.{field_name}"
+
         if (
             is_component_class(field_value.__class__)
             and not field_value.__component_configured__
         ):
+            # Set the component parent so that inherited fields function
+            # correctly.
+            field_value.__component_parent__ = instance
+
             # Configure the nested sub-component. The configuration we use
             # consists of all non-scoped keys and any keys scoped to
             # `field_name`, where the keys scoped to `field_name` override the
@@ -421,22 +505,22 @@ def configure(
             configure(field_value, nested_conf, name=full_name, interactive=interactive)
 
     # Type check all fields.
-    for field_name, field_type in instance.__component_fields__.items():
+    for field_name, field in instance.__component_fields__.items():
         assert field_name in instance.__component_fields__
         field_value = getattr(instance, field_name)
         try:
-            check_type(field_name, field_value, field_type)
+            check_type(field_name, field_value, field.annotated_type)
             # Because boolean `True` and `False` are coercible to ints and
             # floats, `typeguard.check_type` doesn't throw if we e.g. pass
-            # `True` to a value expecting a float. This would, however,
-            # likely be a user error, so explicitly check for this.
-            if field_type in [float, int] and isinstance(field_value, bool):
+            # `True` to a value expecting a float. This would, however, likely
+            # be a user error, so explicitly check for this.
+            if field.annotated_type in [float, int] and isinstance(field_value, bool):
                 raise TypeError
         except TypeError:
             raise TypeError(
                 f"Attempting to set field '{instance.__component_name__}.{field_name}' "
-                f"which has annotated type '{type_name_str(field_type)}' with value "
-                f"'{field_value}'."
+                f"which has annotated type '{type_name_str(field.annotated_type)}' "
+                f"with value '{field_value}'."
             ) from None
 
     instance.__component_configured__ = True
