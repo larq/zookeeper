@@ -82,6 +82,13 @@ from zookeeper.core.utils import (
     type_name_str,
 )
 
+try:  # pragma: no cover
+    from colorama import Fore
+
+    YELLOW, GREEN, RED, RESET = Fore.YELLOW, Fore.GREEN, Fore.RED, Fore.RESET
+except ImportError:  # pragma: no cover
+    YELLOW = GREEN = RED = RESET = ""
+
 
 def is_component_class(cls):
     try:
@@ -278,14 +285,6 @@ def delattr_wrapper(delattr_fn):
 ##################################
 # Pretty string representations. #
 ##################################
-
-
-try:  # pragma: no cover
-    from colorama import Fore
-
-    YELLOW, GREEN, RED, RESET = Fore.YELLOW, Fore.GREEN, Fore.RED, Fore.RESET
-except ImportError:  # pragma: no cover
-    YELLOW = GREEN = RED = RESET = ""
 
 
 # Indent for nesting in the string representation
