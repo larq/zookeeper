@@ -1,3 +1,74 @@
+"""
+Components are generic, modular classes designed to be easily configurable.
+
+Components have configurable fields, which can contain either generic Python
+objects or nested sub-components. These are declared with class-level Python
+type annotations, in the same way that fields of
+[dataclasses](https://docs.python.org/3/library/dataclasses.html) are declared.
+After instantiation, components are 'configured' with a configuration
+dictionary; this process automatically injects the correct field values into the
+component and all sub-components. Component fields can have defaults set, either
+in the class definition or passed via `__init__`, but field values passed to
+`configure` will always take precedence over these default values.
+
+If a nested sub-component declares a field with the same name as a field in one
+of its ancestors, it will receive the same configured field value as the parent
+does. Howevever, configuration is scoped: if the field on the child, or on a
+_closer anscestor_, is configured with a different value, then that value will
+override the one from the original parent.
+
+Configuration can be interactive. In this case, the method will prompt for
+missing fields via the CLI.
+
+The following example illustrates the configuration mechanism with and
+configuration scoping:
+
+```
+@component
+class A:
+    x: int
+    z: float
+
+@component
+class B:
+    a: A
+    y: str = "foo"
+
+@component
+class C:
+    b: B
+    x: int
+    z: float = 3.14
+
+c = C()
+configure(
+    c,
+    {
+        "x": 5,                     # (1)
+        "b.x": 10,                  # (2)
+        "b.a.x": 15,                # (3)
+
+        "b.y": "foo",               # (4)
+
+        "b.z": 2.71                 # (5)
+    }
+)
+print(c)
+
+>>  C(
+        b = B(
+            a = A(
+                x = 15,             # (3) overrides (2) overrides (1)
+                z = 2.71            # Inherits from parent: (5)
+            ),
+            y = "foo"               # (4) overrides the default
+        ),
+        x = 5,                      # Only (1) applies
+        z = 3.14                    # The default is taken
+    )
+```
+"""
+
 import inspect
 from typing import Any, Dict, Optional
 
@@ -11,33 +82,10 @@ from zookeeper.core.utils import (
     type_name_str,
 )
 
-try:  # pragma: no cover
-    from colorama import Fore
 
-    BLUE, YELLOW, RESET = Fore.BLUE, Fore.YELLOW, Fore.RESET
-except ImportError:  # pragma: no cover
-    BLUE = YELLOW = RESET = ""
-
-# Indent for nesting in the string representation
-INDENT = " " * 4
-
-
-def str_key_val(key, value, color=True, single_line=False):
-    if is_component_class(value.__class__):
-        if single_line:
-            value = repr(value)
-        else:
-            value = f"\n{INDENT}".join(str(value).split("\n"))
-    elif callable(value):
-        value = "<callable>"
-    elif type(value) == str:
-        value = f'"{value}"'
-    space = "" if single_line else " "
-    return (
-        f"{BLUE}{key}{RESET}{space}={space}{YELLOW}{value}{RESET}"
-        if color
-        else f"{key}{space}={space}{value}"
-    )
+#################################
+# Component subclass utilities. #
+#################################
 
 
 def is_component_class(cls):
@@ -65,14 +113,9 @@ def generate_component_subclasses(cls):
             yield subclass
 
 
-class EmptyFieldError(AttributeError):
-    def __init__(self, component, field_name):
-        message = (
-            f"The component `{component.__component_name__}` has no default or "
-            f"configured value for field `{field_name}`. Please configure the "
-            "component to provide a value."
-        )
-        super().__init__(message)
+#####################
+# Component fields. #
+#####################
 
 
 class Field:
@@ -96,6 +139,19 @@ class NonEmptyField(Field):
         self.is_overriden = is_overriden
 
 
+class EmptyFieldError(AttributeError):
+    def __init__(self, component, field_name):
+        message = (
+            f"The component `{component.__component_name__}` has no default or "
+            f"configured value for field `{field_name}`. Please configure the "
+            "component to provide a value."
+        )
+        super().__init__(message)
+
+
+# Constants which are used internally during component configuration. They are
+# used as placeholders to indicate to a nested sub-component that an ancestor
+# component has a value for a given field name.
 OVERRIDEN_CONF_VALUE = object()
 NON_OVERRIDEN_CONF_VALUE = object()
 
@@ -121,26 +177,9 @@ def set_field_value(instance, name, value):
         )
 
 
-def __component_repr__(instance):
-    fields = ", ".join(
-        [
-            str_key_val(
-                field_name, getattr(instance, field_name), color=False, single_line=True
-            )
-            for field_name in sorted(instance.__component_fields__)
-        ]
-    )
-    return f"{instance.__class__.__name__}({fields})"
-
-
-def __component_str__(instance):
-    fields = f",\n{INDENT}".join(
-        [
-            str_key_val(field_name, getattr(instance, field_name))
-            for field_name in sorted(instance.__component_fields__)
-        ]
-    )
-    return f"{instance.__class__.__name__}(\n{INDENT}{fields}\n)"
+####################################
+# Component class method wrappers. #
+####################################
 
 
 def init_wrapper(init_fn):
@@ -174,7 +213,7 @@ def init_wrapper(init_fn):
             annotations.update(getattr(base_class, "__annotations__", {}))
         instance.__component_fields__ = {}
         for name, annotated_type in annotations.items():
-            if name in object.__dir__(instance):
+            if name in object.__dir__(instance):  # type: ignore
                 instance.__component_fields__[name] = NonEmptyField(
                     annotated_type, is_overriden=False
                 )
@@ -196,8 +235,7 @@ def init_wrapper(init_fn):
 
 def dir_wrapper(dir_fn):
     def __component_dir__(instance):
-        # FIXME
-        return set(dir_fn(instance)) + set(instance.__component_fields__.keys())
+        return set(dir_fn(instance)).union(set(instance.__component_fields__.keys()))
 
     return __component_dir__
 
@@ -248,79 +286,70 @@ def delattr_wrapper(delattr_fn):
     return __component_delattr__
 
 
-def component(cls):
-    """
-    A decorater which turns a class into a Zookeeper component. Components are
-    generic, modular classes designed to be easily configurable.
+##################################
+# Pretty string representations. #
+##################################
 
-    Components can have configurable fields, which can contain either generic
-    Python objects or nested sub-components. These are declared with class-level
-    Python type annotations, in the same way that fields of
-    [dataclasses](https://docs.python.org/3/library/dataclasses.html) are
-    declared. After instantiation, components are 'configured' with a
-    configuration dictionary; this process automatically injects the correct
-    field values into the component and all subcomponents. Component fields can
-    have defaults set, either in the class definition or passed via `__init__`,
-    but configuration values passed to `configure` will always take precedence
-    over these values.
 
-    If a nested sub-component child declares a field with the same name as a
-    field in one of its ancestors, it will receive the same configured field
-    value as the parent does. Howevever, configuration is scoped: if the field
-    on the child, or on a _closer anscestor_, is configured with a different
-    value, then that value will override the one from the original parent.
+try:  # pragma: no cover
+    from colorama import Fore
 
-    Configuration can be interactive. In this case, the method will prompt for
-    missing fields via the CLI.
+    YELLOW, GREEN, RED, RESET = Fore.YELLOW, Fore.GREEN, Fore.RED, Fore.RESET
+except ImportError:  # pragma: no cover
+    YELLOW = GREEN = RED = RESET = ""
 
-    The following example illustrates the configuration mechanism with scoped
-    configuration:
 
-    ```
-    @component
-    class A:
-        x: int
-        z: float
+# Indent for nesting in the string representation
+INDENT = " " * 4
 
-    @component
-    class B:
-        a: A
-        y: str = "foo"
 
-    @component
-    class C:
-        b: B
-        x: int
-        z: float = 3.14
-
-    c = C()
-    configure(
-        c,
-        {
-            "x": 5,                     # (1)
-            "b.x": 10,                  # (2)
-            "b.a.x": 15,                # (3)
-
-            "b.y": "foo",               # (4)
-
-            "b.z": 2.71                 # (5)
-        }
+def str_key_val(key, value, color=True, single_line=False):
+    if is_component_class(value.__class__):
+        if single_line:
+            value = repr(value)
+        else:
+            value = f"\n{INDENT}".join(str(value).split("\n"))
+    elif callable(value):
+        value = "<callable>"
+    elif type(value) == str:
+        value = f'"{value}"'
+    space = "" if single_line else " "
+    return (
+        f"{YELLOW}{key}{RESET}{space}={space}{YELLOW}{value}{RESET}"
+        if color
+        else f"{key}{space}={space}{value}"
     )
-    print(c)
 
-    >>  C(
-            b = B(
-                a = A(
-                    x = 15,             # (3) overrides (2) overrides (1)
-                    z = 2.71            # Inherits from parent: (5)
-                ),
-                y = "foo"               # (4) overrides the default
-            ),
-            x = 5,                      # Only (1) applies
-            z = 3.14                    # The default is taken
-        )
-    ```
-    """
+
+def __component_repr__(instance):
+    fields = ", ".join(
+        [
+            str_key_val(
+                field_name, getattr(instance, field_name), color=False, single_line=True
+            )
+            for field_name in sorted(instance.__component_fields__)
+        ]
+    )
+    return f"{instance.__class__.__name__}({fields})"
+
+
+def __component_str__(instance):
+    fields = f",\n{INDENT}".join(
+        [
+            str_key_val(field_name, getattr(instance, field_name))
+            for field_name in sorted(instance.__component_fields__)
+        ]
+    )
+    return f"{instance.__class__.__name__}(\n{INDENT}{fields}\n)"
+
+
+#######################
+# Exported functions. #
+#######################
+
+
+def component(cls):
+    """A decorater which turns a class into a Zookeeper component."""
 
     if not inspect.isclass(cls):
         raise ValueError("Only classes can be decorated with @component.")
@@ -341,7 +370,7 @@ def component(cls):
 
     # Override `__getattribute__`, `__setattr__`, and `__delattr__` to correctly
     # manage getting, setting, and deleting component fields.
-    cls.__getattribute__ = getattribute_wrapper(cls.__getattribute__)
+    cls.__getattribute__ = getattribute_wrapper(cls.__getattribute__)  # type: ignore
     cls.__setattr__ = setattr_wrapper(cls.__setattr__)
     cls.__delattr__ = delattr_wrapper(cls.__delattr__)
 
@@ -421,7 +450,7 @@ def configure(
         # we only need to add a placeholder to `conf` to make sure that the
         # value will be accessible from sub-components. `hasattr` isn't safe so
         # we have to check membership directly.
-        elif field_name in object.__dir__(instance):
+        elif field_name in object.__dir__(instance):  # type: ignore
             conf[field_name] = NON_OVERRIDEN_CONF_VALUE
 
         # If there is only one concrete component subclass of the annotated
