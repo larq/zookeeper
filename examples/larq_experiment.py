@@ -7,7 +7,6 @@ from typing import Tuple, Union
 
 import larq as lq
 import tensorflow as tf
-import tensorflow_datasets as tfds
 
 from zookeeper import cli, component, task
 from zookeeper.tf import Dataset, Experiment, Model, Preprocessing, TFDSDataset
