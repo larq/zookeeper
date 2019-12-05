@@ -83,11 +83,6 @@ from zookeeper.core.utils import (
 )
 
 
-#################################
-# Component subclass utilities. #
-#################################
-
-
 def is_component_class(cls):
     try:
         return "__component_name__" in cls.__dict__
