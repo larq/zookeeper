@@ -9,17 +9,19 @@ import larq as lq
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from zookeeper import Dataset, Experiment, Model, Preprocessing, TFDSDataset
-from zookeeper.cli import add_task_to_cli, cli
+from zookeeper import cli, component, task
+from zookeeper.tf import Dataset, Experiment, Model, Preprocessing, TFDSDataset
 
 
+@component
 class Cifar10(TFDSDataset):
     name = "cifar10"
     # CIFAR-10 has only train and test, so validate on test.
-    train_split = tfds.Split.TRAIN
-    validation_split = tfds.Split.TEST
+    train_split = "train"
+    validation_split = "test"
 
 
+@component
 class PadCropAndFlip(Preprocessing):
     pad_size: int
     output_size: int
@@ -44,6 +46,7 @@ class PadCropAndFlip(Preprocessing):
         return data["label"]
 
 
+@component
 class BinaryNet(Model):
     dataset: Dataset
     preprocessing: Preprocessing
@@ -107,7 +110,7 @@ class BinaryNet(Model):
         )
 
 
-@add_task_to_cli
+@task
 class BinaryNetCifar10(Experiment):
     dataset = Cifar10()
     preprocessing = PadCropAndFlip(pad_size=40, output_size=32)
