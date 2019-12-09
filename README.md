@@ -12,23 +12,25 @@ pip install zookeeper
 
 ### Components
 
-The fundamental building block of Zookeeper is a
-[`Component`](zookeeper/component.py). `Component` subclasses can have
-configurable parameters, which are declared using class-level type annotations
-(in a similar way to [Python
+The fundamental building blocks of Zookeeper are components. The
+[`@component`](zookeeper/component.py) decorator is used to turn classes into
+components. These component classes can have configurable parameters, which are
+declared using class-level type annotations (in a similar way to [Python
 dataclasses](https://docs.python.org/3/library/dataclasses.html)). These
 parameters can be Python objects or nested sub-components, and need not be set
 with a default value.
 
 For example:
 ```python
-from zookeeper import Component
+from zookeeper import component
 
-class ChildComponent(Component):
+@component
+class ChildComponent:
     a: int                  # An `int` parameter, with no default set
     b: str = "foo"          # A `str` parameter, which by default will be `foo`
 
-class ParentComponent(Component):
+@component
+class ParentComponent:
     a: int                  # The same `int` parameter as the child
     child: ChildComponent   # A nested component parameter, of type `ChildComponent`
 ```
@@ -43,12 +45,17 @@ unless a 'scoped' value is set on the child.
 
 For example:
 ```
+from zookeeper import configure
+
 p = ParentComponent()
 
-p.configure({
-    "a": 5,
-    "child.a": 4,
-})
+configure(
+    p,
+    {
+        "a": 5,
+        "child.a": 4,
+    }
+)
 
 >>> 'ChildComponent' is the only concrete component class that satisfies the type
 >>> of the annotated parameter 'ParentComponent.child'. Using an instance of this
@@ -67,27 +74,22 @@ print(p)
 
 ### Tasks and the CLI
 
-The best way to define runnable tasks with Zookeeper is to subclass
-[`Task`](zookeeper/task.py) and override the `run` method.
-
-Zookeeper provides a small mechanism to run tasks from a CLI, using the
-decorator `@add_task_to_cli`. The CLI will automatically instantiate the task
-and call `configure()`, passing in configuration parsed from command line
-arguments.
+The [`@task`](zookeeper/task.py) decorator is used to define Zookeeper tasks and
+can be applied to any class that implements an argument-less `run` method. Such
+tasks can be run through the Zookeeper CLI, with parameter values passed in
+through CLI arguments (`configure` is implicitly called).
 
 For example:
 ```python
-from zookeeper import Task
-from zookeeper.cli import add_task_to_cli, cli
+from zookeeper import cli, task
 
-@add_task_to_cli
-class UseChildA(Task):
+@task
+class UseChildA:
     parent: ParentComponent
-
     def run(self):
         print(self.parent.child.a)
 
-@add_task_to_cli
+@task
 class UseParentA(UseChildA):
     def run(self):
         print(self.parent.a)
