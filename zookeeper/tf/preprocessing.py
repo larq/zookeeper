@@ -1,18 +1,24 @@
-from functools import partial
-from inspect import signature
-from typing import Tuple
+import functools
+import inspect
+from typing import Dict, Tuple
 
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
 
 def pass_training_kwarg(function, training=False):
-    if "training" in signature(function).parameters:
-        return partial(function, training=training)
+    if "training" in inspect.signature(function).parameters:
+        return functools.partial(function, training=training)
     return function
 
 
 class Preprocessing:
     """A wrapper around `tf.data` preprocessing."""
+
+    decoders: Dict[str, tfds.core.base.Decoder] = None
+
+    # The shape of the processed input. Must match the output of `input()`.
+    input_shape: Tuple[int, int, int]
 
     def input(self, data, training) -> tf.Tensor:
         """
@@ -26,7 +32,7 @@ class Preprocessing:
                 An optional `bool` to indicate whether the data is training
                 data.
         Returns:
-            A tensor of processed input.
+            A tensor of processed input, with shape `self.input_shape`.
         """
 
         raise NotImplementedError("Must be implemented in subclasses.")
