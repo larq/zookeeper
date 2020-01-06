@@ -35,16 +35,16 @@ def task(cls):
 
     # Register a CLI command to run the task.
 
-    task_name = convert_to_snake_case(cls.__name__)
-    if task_name in cli.commands:
+    if convert_to_snake_case(cls.__name__) in (
+        convert_to_snake_case(c) for c in cli.commands
+    ):
         raise ValueError(
-            f"Task naming conflict. Task with name '{task_name}' already registered. "
-            "Note that the task name is the name of the class that the @task decorator "
-            "is applied to, normalised to 'snake case', e.g. 'FooBarTask' -> "
-            "'foo_bar_task'."
+            f"Task naming conflict. Task with name '{cls.__name__}' (or similar) "
+            "already registered. Note that the task name is the name of the class that "
+            "the @task decorator is applied to."
         )
 
-    @cli.command(task_name)
+    @cli.command(cls.__name__)
     @click.argument("config", type=ConfigParam(), nargs=-1)
     @click.option("-i", "--interactive", is_flag=True, default=False)
     def command(config, interactive):

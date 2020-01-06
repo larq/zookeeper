@@ -2,12 +2,7 @@ import re
 
 import click
 
-from zookeeper.core.utils import parse_value_from_string
-
-
-@click.group()
-def cli():
-    pass
+from zookeeper.core.utils import convert_to_snake_case, parse_value_from_string
 
 
 class ConfigParam(click.ParamType):
@@ -37,3 +32,19 @@ class ConfigParam(click.ParamType):
             )
 
         return key, value
+
+
+class CamelCaseGroup(click.Group):
+    """Invoke commands with string that resolves to the same camel-case."""
+
+    def get_command(self, ctx, cmd_name):
+        cmd_name = convert_to_snake_case(cmd_name)
+        for c in self.list_commands(ctx):
+            if convert_to_snake_case(c) == cmd_name:
+                return click.Group.get_command(self, ctx, c)
+        return None
+
+
+@click.group(cls=CamelCaseGroup)
+def cli():
+    pass

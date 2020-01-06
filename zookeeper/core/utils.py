@@ -17,8 +17,9 @@ def type_name_str(type) -> str:
 
 
 def convert_to_snake_case(name):
-    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+    s = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    s = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s)
+    return re.sub(r"__+", "_", s).lower()
 
 
 def parse_value_from_string(string: str):
