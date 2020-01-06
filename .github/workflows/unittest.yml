@@ -23,6 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install tensorflow==${{matrix.tf-version}}
+          pip install larq
           pip install -e .[test]
       - name: Test with pytest
         run: pytest . -vv --cov=zookeeper --cov-report=xml --cov-config=.coveragerc
