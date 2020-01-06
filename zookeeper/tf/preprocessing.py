@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
