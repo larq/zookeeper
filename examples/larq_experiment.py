@@ -13,9 +13,8 @@ from zookeeper.tf import Dataset, Experiment, Model, Preprocessing, TFDSDataset
 
 
 @component
-class Cifar10(TFDSDataset):
-    name = "cifar10"
-    # CIFAR-10 has only train and test, so validate on test.
+class Mnist(TFDSDataset):
+    name = "mnist"
     train_split = "train"
     validation_split = "test"
 
@@ -106,8 +105,8 @@ class BinaryNet(Model):
 
 @task
 class BinaryNetCifar10(Experiment):
-    dataset = Cifar10()
-    preprocessing = PadCropAndFlip(pad_size=40, input_shape=(32, 32, 3))
+    dataset = Mnist()
+    preprocessing = PadCropAndFlip(pad_size=32, input_shape=(28, 28, 1))
     model = BinaryNet()
 
     epochs = 100
