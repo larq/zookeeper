@@ -85,9 +85,9 @@ from zookeeper.core.utils import (
 try:  # pragma: no cover
     from colorama import Fore
 
-    YELLOW, GREEN, RED, RESET = Fore.YELLOW, Fore.GREEN, Fore.RED, Fore.RESET
+    BLUE, RESET, YELLOW = Fore.BLUE, Fore.RESET, Fore.YELLOW
 except ImportError:  # pragma: no cover
-    YELLOW = GREEN = RED = RESET = ""
+    BLUE = RESET = YELLOW = ""
 
 
 def is_component_class(cls):
@@ -301,12 +301,7 @@ def str_key_val(key, value, color=True, single_line=False):
         value = "<callable>"
     elif type(value) == str:
         value = f'"{value}"'
-    space = "" if single_line else " "
-    return (
-        f"{YELLOW}{key}{RESET}{space}={space}{YELLOW}{value}{RESET}"
-        if color
-        else f"{key}{space}={space}{value}"
-    )
+    return f"{BLUE}{key}{RESET}={YELLOW}{value}{RESET}" if color else f"{key}={value}"
 
 
 def __component_repr__(instance):

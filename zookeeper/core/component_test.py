@@ -323,11 +323,11 @@ def test_str_and_repr():
     assert (
         unstyle(str(p))
         == """Parent(
-    b = "foo",
-    child = Child(
-        a = 10,
-        b = "foo",
-        c = [1.5, -1.2]
+    b="foo",
+    child=Child(
+        a=10,
+        b="foo",
+        c=[1.5, -1.2]
     )
 )"""
     )
