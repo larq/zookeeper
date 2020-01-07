@@ -139,7 +139,7 @@ class BinaryNetCifar10(Experiment):
                 .repeat()
                 .batch(self.batch_size)
             )
-            input_shape = train_data.output_shapes[0][1:]
+            input_shape = tf.compat.v1.data.get_output_shapes(train_data)[0][1:]
 
         model = self.model.build(input_shape=input_shape)
 
