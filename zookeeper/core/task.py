@@ -45,7 +45,13 @@ def task(cls):
         )
 
     @cli.command(cls.__name__, context_settings=dict(ignore_unknown_options=True))
-    @click.option("-i", "--interactive", is_flag=True, default=False)
+    @click.option(
+        "-i",
+        "--interactive",
+        is_flag=True,
+        default=False,
+        help="Interactively configure task.",
+    )
     @click.argument("config", type=ConfigParam(), nargs=-1)
     def command(config, interactive):
         config = {k: v for k, v in config}
