@@ -7,6 +7,14 @@ from zookeeper.core.utils import convert_to_snake_case, parse_value_from_string
 
 class ConfigParam(click.ParamType):
     def convert(self, str_value, param, ctx):
+        # Allow the syntax `--name_of_key` to set the boolean flag to `True`,
+        # and likewise `--no-name_of_key` to set the boolean flag to `False`.
+        if re.match("^--[\\w.]+$", str_value):
+            return str_value[2:], True
+        if re.match("^--no-[\\w.]+$", str_value):
+            return str_value[5:], False
+
+        # Otherwise, expect the syntax `name_of_key=value`.
         try:
             key, value = str_value.split("=")
             # Make sure the key is alpha-numeric (possibly with full stops).

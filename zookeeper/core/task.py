@@ -44,9 +44,9 @@ def task(cls):
             "the @task decorator is applied to."
         )
 
-    @cli.command(cls.__name__)
-    @click.argument("config", type=ConfigParam(), nargs=-1)
+    @cli.command(cls.__name__, context_settings=dict(ignore_unknown_options=True))
     @click.option("-i", "--interactive", is_flag=True, default=False)
+    @click.argument("config", type=ConfigParam(), nargs=-1)
     def command(config, interactive):
         config = {k: v for k, v in config}
         task_instance = cls()

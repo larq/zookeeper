@@ -8,9 +8,10 @@ from zookeeper.core.task import task
 class TestTask:
     a: int
     b: str = "foo"
+    c: bool = False
 
     def run(self):
-        print(self.a, self.b)
+        print(self.a, self.b, self.c)
 
 
 runner = testing.CliRunner(mix_stderr=False)
@@ -30,7 +31,7 @@ def test_pass_param_values():
     # We should be able to pass parameter values through the CLI.
     result = runner.invoke(cli, ["test_task", "a=5"])
     assert result.exit_code == 0
-    assert result.output == "5 foo\n"
+    assert result.output == "5 foo False\n"
 
 
 def test_param_key_valid_characters():
@@ -51,9 +52,9 @@ def test_param_key_invalid_characters():
 
 def test_override_param_values():
     # We should be able to override existing parameter values through the CLI.
-    result = runner.invoke(cli, ["test_task", "a=5", "b=bar"])
+    result = runner.invoke(cli, ["test_task", "a=5", "b=bar", "c=True"])
     assert result.exit_code == 0
-    assert result.output == "5 bar\n"
+    assert result.output == "5 bar True\n"
 
 
 def test_override_param_complex_string():
@@ -62,4 +63,14 @@ def test_override_param_complex_string():
         cli, ["test_task", "a=5", "b=https://some-path/foo/bar@somewhere"]
     )
     assert result.exit_code == 0
-    assert result.output == "5 https://some-path/foo/bar@somewhere\n"
+    assert result.output == "5 https://some-path/foo/bar@somewhere False\n"
+
+
+def test_boolean_flag_syntax():
+    # We should be able to use a shorthand for setting boolean flags.
+    result = runner.invoke(cli, ["test_task", "a=5", "--c"])
+    assert result.exit_code == 0
+    assert result.output == "5 foo True\n"
+    result = runner.invoke(cli, ["test_task", "a=5", "--no-c"])
+    assert result.exit_code == 0
+    assert result.output == "5 foo False\n"
