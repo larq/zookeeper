@@ -16,9 +16,7 @@ def pass_training_kwarg(function, training=False):
 class Preprocessing:
     """A wrapper around `tf.data` preprocessing."""
 
-    decoders: Optional[
-        Dict[str, Union[tfds.decode.Decoder, Dict[str, tfds.decode.Decoder]]]
-    ] = None
+    decoders: Optional[Dict[str, Union[tfds.decode.Decoder, Dict]]] = None
 
     # The shape of the processed input. Must match the output of `input()`.
     input_shape: Tuple[int, int, int]
