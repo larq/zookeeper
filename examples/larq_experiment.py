@@ -1,7 +1,5 @@
-# This is an example of how to use Zookeeper to run a Larq BinaryNet experiment
-# on CIFAR-10.
+"""An example of how to use Zookeeper to run a Larq BinaryNet experiment on MNIST."""
 
-import math
 from functools import partial
 from typing import Tuple, Union
 
@@ -114,7 +112,7 @@ class BinaryNetCifar10(Experiment):
 
     loss = "sparse_categorical_crossentropy"
 
-    metrics = ["acc"]
+    metrics = ["accuracy"]
 
     learning_rate = 5e-3
 
@@ -123,25 +121,23 @@ class BinaryNetCifar10(Experiment):
         return tf.keras.optimizers.Adam(self.learning_rate)
 
     def run(self):
-        with tf.device("/cpu:0"):
-            train_data, num_train_examples = self.dataset.train()
-            train_data = (
-                train_data.cache()
-                .map(partial(self.preprocessing, training=True))
-                .shuffle(10 * self.batch_size)
-                .repeat()
-                .batch(self.batch_size)
-            )
-            validation_data, num_validation_examples = self.dataset.validation()
-            validation_data = (
-                validation_data.map(self.preprocessing)
-                .cache()
-                .repeat()
-                .batch(self.batch_size)
-            )
-            input_shape = tf.compat.v1.data.get_output_shapes(train_data)[0][1:]
+        train_data, num_train_examples = self.dataset.train()
+        train_data = (
+            train_data.cache()
+            .shuffle(10 * self.batch_size)
+            .repeat()
+            .map(partial(self.preprocessing, training=True))
+            .batch(self.batch_size)
+        )
+        validation_data, num_validation_examples = self.dataset.validation()
+        validation_data = (
+            validation_data.cache()
+            .repeat()
+            .map(self.preprocessing)
+            .batch(self.batch_size)
+        )
 
-        model = self.model.build(input_shape=input_shape)
+        model = self.model.build(input_shape=self.preprocessing.input_shape)
 
         model.compile(optimizer=self.optimizer, loss=self.loss, metrics=self.metrics)
 
@@ -150,9 +146,9 @@ class BinaryNetCifar10(Experiment):
         model.fit(
             train_data,
             epochs=self.epochs,
-            steps_per_epoch=math.ceil(num_train_examples / self.batch_size),
+            steps_per_epoch=num_train_examples // self.batch_size,
             validation_data=validation_data,
-            validation_steps=math.ceil(num_validation_examples / self.batch_size),
+            validation_steps=num_validation_examples // self.batch_size,
             callbacks=self.callbacks,
         )
 
