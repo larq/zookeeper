@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
 import tensorflow as tf
+
 import tensorflow_datasets as tfds
 
 
@@ -130,11 +131,11 @@ class MultiTFDSDataset(Dataset):
     # A non-empty mapping from dataset names as keys to splits as values. The
     # training data will be the concatenation of the datasets loaded from each
     # (key, value) pair.
-    train_splits: Dict[str, str]
+    train_split: Dict[str, str]
 
     # As above, a mapping from dataset names as keys to splits as values. May be
     # empty, indicating no validation data.
-    validation_splits: Dict[str, str] = {}
+    validation_split: Dict[str, str] = {}
 
     # The directory that the dataset is stored in.
     data_dir: Optional[str] = None
@@ -166,12 +167,12 @@ class MultiTFDSDataset(Dataset):
 
     def train(self, decoders=None):
         return (
-            self.load(self.train_splits, decoders=decoders, shuffle=True),
-            self.num_examples(self.train_splits),
+            self.load(self.train_split, decoders=decoders, shuffle=True),
+            self.num_examples(self.train_split),
         )
 
     def validation(self, decoders=None):
         return (
-            self.load(self.validation_splits, decoders=decoders, shuffle=False),
-            self.num_examples(self.validation_splits),
+            self.load(self.validation_split, decoders=decoders, shuffle=False),
+            self.num_examples(self.validation_split),
         )
