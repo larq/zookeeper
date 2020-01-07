@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="zookeeper",
-    version="1.0.b1",
+    version="1.0.b2",
     author="Plumerai",
     author_email="lukas@plumerai.co.uk",
     description="A small library for managing deep learning models, hyper parameters and datasets",
