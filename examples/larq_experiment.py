@@ -13,9 +13,8 @@ from zookeeper.tf import Dataset, Experiment, Model, Preprocessing, TFDSDataset
 
 
 @component
-class Cifar10(TFDSDataset):
-    name = "cifar10"
-    # CIFAR-10 has only train and test, so validate on test.
+class Mnist(TFDSDataset):
+    name = "mnist"
     train_split = "train"
     validation_split = "test"
 
@@ -23,7 +22,6 @@ class Cifar10(TFDSDataset):
 @component
 class PadCropAndFlip(Preprocessing):
     pad_size: int
-    output_size: int
 
     def input(self, data, training):
         image = data["image"]
@@ -31,14 +29,10 @@ class PadCropAndFlip(Preprocessing):
             image = tf.image.resize_with_crop_or_pad(
                 image, self.pad_size, self.pad_size
             )
-            image = tf.image.random_crop(
-                image, (self.output_size, self.output_size, image.shape[-1])
-            )
+            image = tf.image.random_crop(image, self.input_shape)
             image = tf.image.random_flip_left_right(image)
         else:
-            image = tf.image.resize_with_crop_or_pad(
-                image, self.output_size, self.output_size
-            )
+            image = tf.image.resize_with_crop_or_pad(image, *self.input_shape[:2])
         return tf.cast(image, tf.float32) / (255.0 / 2.0) - 1.0
 
     def output(self, data):
@@ -111,8 +105,8 @@ class BinaryNet(Model):
 
 @task
 class BinaryNetCifar10(Experiment):
-    dataset = Cifar10()
-    preprocessing = PadCropAndFlip(pad_size=40, output_size=32)
+    dataset = Mnist()
+    preprocessing = PadCropAndFlip(pad_size=32, input_shape=(28, 28, 1))
     model = BinaryNet()
 
     epochs = 100
@@ -145,7 +139,7 @@ class BinaryNetCifar10(Experiment):
                 .repeat()
                 .batch(self.batch_size)
             )
-            input_shape = train_data.output_shapes[0][1:]
+            input_shape = tf.compat.v1.data.get_output_shapes(train_data)[0][1:]
 
         model = self.model.build(input_shape=input_shape)
 
