@@ -24,7 +24,7 @@ def test_non_class_decorate_error():
     """
 
     with pytest.raises(
-        ValueError, match="Only classes can be decorated with @component.",
+        ValueError, match="Only classes can be decorated with @component."
     ):
 
         @component
@@ -38,7 +38,7 @@ def test_abstract_class_decorate_error():
     """
 
     with pytest.raises(
-        ValueError, match="Abstract classes cannot be decorated with @component.",
+        ValueError, match="Abstract classes cannot be decorated with @component."
     ):
 
         @component

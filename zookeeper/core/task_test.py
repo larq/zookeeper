@@ -28,7 +28,7 @@ def test_no_run_error():
     """Tasks without `run` should cause an error."""
 
     with pytest.raises(
-        ValueError, match="Classes decorated with @task must define a `run` method.",
+        ValueError, match="Classes decorated with @task must define a `run` method."
     ):
 
         @task
