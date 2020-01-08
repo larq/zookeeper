@@ -1,3 +1,3 @@
-from zookeeper.core import cli, component, configure, task
+from zookeeper.core import cli, component, configure, configurable_parameter, task
 
-__all__ = ["cli", "component", "configure", "task"]
+__all__ = ["cli", "component", "configure", "configurable_parameter", "task"]

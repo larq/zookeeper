@@ -115,6 +115,15 @@ def generate_component_subclasses(cls):
             yield subclass
 
 
+class WrappedValue:
+    def __init__(self, value_factory):
+        self.value_factory = value_factory
+
+
+def configurable_parameter(value_factory):
+    return WrappedValue(value_factory)
+
+
 #####################
 # Component fields. #
 #####################
@@ -254,7 +263,10 @@ def getattribute_wrapper(getattr_fn):
             if isinstance(field, InheritedField):
                 return getattr(instance.__component_parent__, name)
         else:
-            return getattr_fn(instance, name)
+            value = getattr_fn(instance, name)
+            if isinstance(value, WrappedValue):
+                value = value.value_factory(instance)
+            return value
         raise AttributeError
 
     return __component_getattr__
