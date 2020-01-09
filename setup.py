@@ -23,6 +23,7 @@ setup(
         "prompt-toolkit>=2.0.10",
         "tensorflow-datasets>=1.3.0",
         "typeguard>=2.5.1",
+        "psutil>=5.0.0"
     ],
     extras_require={
         "tensorflow": ["tensorflow>=1.14.0"],

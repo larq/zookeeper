@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
+import psutil
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -53,7 +54,7 @@ class TFDSDataset(Dataset):
     """
 
     # The TensorFlowDatasets name, which may specify a builder config and/or
-    # version, e.g. "imagenet2012:4.0.0"
+    # version, e.g. "imagenet2012:5.0.0"
     name: str
 
     # The directory that the dataset is stored in.
@@ -63,8 +64,15 @@ class TFDSDataset(Dataset):
     train_split: str
     validation_split: Optional[str] = None
 
+    should_cache: bool = True
+
     @property
-    def info(self):
+    def should_cache(self):
+        dataset_size = self.info.size_in_bytes * 1.05
+        return psutil.virtual_memory().available > dataset_size
+
+    @property
+    def info(self) -> tfds.core.DatasetInfo:
         if not hasattr(self, "_info"):
             self._info = tfds.builder(self.name, data_dir=self.data_dir).info
         return self._info
@@ -138,6 +146,8 @@ class MultiTFDSDataset(Dataset):
 
     # The directory that the dataset is stored in.
     data_dir: Optional[str] = None
+
+    should_cache: bool = True
 
     def num_examples(self, splits) -> int:
         """
