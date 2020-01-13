@@ -28,7 +28,7 @@ jobs:
       - name: Test with pytest
         run: pytest . -vv --cov=zookeeper --cov-report=xml --cov-config=.coveragerc
       - name: Test example script # Test that the model successfully compiles.
-        run: python examples/larq_experiment.py BinaryNetCifar10 epochs=0
+        run: python examples/larq_experiment.py BinaryNetMnist epochs=0
       - name: Upload code-coverage report to Codecov
         if: matrix.python-version == '3.7' && matrix.tf-version == '2.0.0'
         run: curl -s https://codecov.io/bash | bash -s -- -t $token -f ./coverage.xml -F unittests

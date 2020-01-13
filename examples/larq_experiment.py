@@ -102,7 +102,7 @@ class BinaryNet(Model):
 
 
 @task
-class BinaryNetCifar10(Experiment):
+class BinaryNetMnist(Experiment):
     dataset = Mnist()
     preprocessing = PadCropAndFlip(pad_size=32, input_shape=(28, 28, 1))
     model = BinaryNet()

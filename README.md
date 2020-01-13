@@ -21,6 +21,7 @@ parameters can be Python objects or nested sub-components, and need not be set
 with a default value.
 
 For example:
+
 ```python
 from zookeeper import component
 
@@ -44,6 +45,7 @@ containing parent, then it will pick up the value that's set on the parent,
 unless a 'scoped' value is set on the child.
 
 For example:
+
 ```
 from zookeeper import configure
 
@@ -80,6 +82,7 @@ tasks can be run through the Zookeeper CLI, with parameter values passed in
 through CLI arguments (`configure` is implicitly called).
 
 For example:
+
 ```python
 from zookeeper import cli, task
 
@@ -99,6 +102,7 @@ if __name__ == "__main__":
 ```
 
 Running the above file then gives a nice CLI interface:
+
 ```
 python test.py use_child_a
 >>> ValueError: No configuration value found for annotated parameter 'UseChildA.parent.a' of type 'int'.
@@ -118,5 +122,5 @@ python test.py use_parent_a a=5 child.a=3
 See [examples/larq_experiment.py](examples/larq_experiment.py) for an example of
 how to use Zookeeper to define all the necessary components (dataset,
 preprocessing, and model) of a Larq experiment: training a BinaryNet on
-CIFAR-10. This example can be easily adapted to other Larq or Keras models and
+MNIST. This example can be easily adapted to other Larq or Keras models and
 other datasets.
