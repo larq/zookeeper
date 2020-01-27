@@ -149,7 +149,6 @@ class BinaryNetMnist(Experiment):
             steps_per_epoch=num_train_examples // self.batch_size,
             validation_data=validation_data,
             validation_steps=num_validation_examples // self.batch_size,
-            callbacks=self.callbacks,
         )
 
 

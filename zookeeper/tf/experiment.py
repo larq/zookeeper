@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Union
+from typing import Optional, Union
 
 from tensorflow import keras
 
@@ -21,8 +21,5 @@ class Experiment:
     # Parameters
     epochs: int
     batch_size: int
-    metrics: List[Union[keras.metrics.Metric, Callable, str]] = []
     loss: Optional[Union[keras.losses.Loss, str]]
     optimizer: Union[keras.optimizers.Optimizer, str]
-    learning_rate_schedule: Optional[Callable] = None
-    callbacks: List[Union[keras.callbacks.Callback, Callable]] = []
