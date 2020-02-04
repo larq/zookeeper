@@ -21,16 +21,16 @@ def task(cls):
     cls = component(cls)
 
     if not (hasattr(cls, "run") and callable(cls.run)):
-        raise ValueError("Classes decorated with @task must define a `run` method.")
+        raise TypeError("Classes decorated with @task must define a `run` method.")
 
     # Enforce argument-less `run`
 
     call_args = inspect.signature(cls.run).parameters
     if len(call_args) > 1 or len(call_args) == 1 and "self" not in call_args:
-        raise ValueError(
-            "A task class must define a `run` method taking no arguments except "
+        raise TypeError(
+            "A @task class must define a `run` method taking no arguments except "
             f"`self`, which runs the task, but `{cls.__name__}.run` accepts arguments "
-            f"{call_args}."
+            f"{tuple(name for name in call_args)}."
         )
 
     # Register a CLI command to run the task.

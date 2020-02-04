@@ -1,17 +1,19 @@
-from abc import ABC, abstractmethod
+import abc
 from typing import Dict, Optional, Tuple
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from zookeeper.core.field import Field
 
-class Dataset(ABC):
+
+class Dataset(abc.ABC):
     """
     An abstract base class to encapsulate a dataset. Concrete sub-classes must
     implement the `train` method, and optionally the `validation` method.
     """
 
-    @abstractmethod
+    @abc.abstractmethod
     def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         """
         Return a tuple of the training dataset and the number of training
@@ -43,7 +45,7 @@ def base_splits(split):
     if "+" in split:
         return split.split("+")
     elif isinstance(split, tfds.core.splits._SplitMerged):
-        return base_splits(split._split1) + base_splits(split._split2)  # type: ignore
+        return base_splits(split._split1) + base_splits(split._split2)
     return [split]
 
 
@@ -54,14 +56,14 @@ class TFDSDataset(Dataset):
 
     # The TensorFlowDatasets name, which may specify a builder config and/or
     # version, e.g. "imagenet2012:4.0.0"
-    name: str
+    name: str = Field()
 
     # The directory that the dataset is stored in.
-    data_dir: Optional[str] = None
+    data_dir: Optional[str] = Field(None)
 
     # Train and validation splits. A validation split is not required.
-    train_split: str
-    validation_split: Optional[str] = None
+    train_split: str = Field()
+    validation_split: Optional[str] = Field(None)
 
     @property
     def info(self):
@@ -79,13 +81,13 @@ class TFDSDataset(Dataset):
             features = self.info.features
             if "label" in features:
                 return features["label"].num_classes
-            if "labels" in features:
+            if "labels" in features and hasattr(features["labels"], "feature"):
                 return features["labels"].feature.num_classes
             if "objects" in features and "label" in features["objects"]:
                 return features["objects"]["label"].num_classes
         except Exception:
             pass
-        raise ValueError("Unable to determine the number of classes.")
+        raise ValueError("Unable to determine the number of classes automatically.")
 
     def num_examples(self, split) -> int:
         """Compute the number of examples in a given split."""
@@ -130,14 +132,14 @@ class MultiTFDSDataset(Dataset):
     # A non-empty mapping from dataset names as keys to splits as values. The
     # training data will be the concatenation of the datasets loaded from each
     # (key, value) pair.
-    train_split: Dict[str, str]
+    train_split: Dict[str, str] = Field()
 
     # As above, a mapping from dataset names as keys to splits as values. May be
     # empty, indicating no validation data.
-    validation_split: Dict[str, str] = {}
+    validation_split: Dict[str, str] = Field(lambda: {})
 
     # The directory that the dataset is stored in.
-    data_dir: Optional[str] = None
+    data_dir: Optional[str] = Field(None)
 
     def num_examples(self, splits) -> int:
         """

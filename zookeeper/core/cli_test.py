@@ -1,14 +1,15 @@
 from click import testing
 
 from zookeeper.core.cli import cli
+from zookeeper.core.field import Field
 from zookeeper.core.task import task
 
 
 @task
 class TestTask:
-    a: int
-    b: str = "foo"
-    c: bool = False
+    a: int = Field()
+    b: str = Field("foo")
+    c: bool = Field(False)
 
     def run(self):
         print(self.a, self.b, self.c)

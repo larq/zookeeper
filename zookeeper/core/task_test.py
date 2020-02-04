@@ -28,7 +28,7 @@ def test_no_run_error():
     """Tasks without `run` should cause an error."""
 
     with pytest.raises(
-        ValueError, match="Classes decorated with @task must define a `run` method."
+        TypeError, match="Classes decorated with @task must define a `run` method."
     ):
 
         @task
@@ -42,4 +42,12 @@ def test_run_with_args_error():
     a ValueError.
     """
 
-    pass
+    with pytest.raises(
+        TypeError,
+        match=r"^A @task class must define a `run` method taking no arguments except `self`",
+    ):
+
+        @task
+        class T:
+            def run(a, b):
+                pass

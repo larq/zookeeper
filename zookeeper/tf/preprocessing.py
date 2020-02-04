@@ -5,6 +5,8 @@ from typing import Dict, Optional, Tuple, Union
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from zookeeper.core.field import Field
+
 
 def pass_training_kwarg(function, training=False):
     if "training" in inspect.signature(function).parameters:
@@ -15,10 +17,10 @@ def pass_training_kwarg(function, training=False):
 class Preprocessing:
     """A wrapper around `tf.data` preprocessing."""
 
-    decoders: Optional[Dict[str, Union[tfds.decode.Decoder, Dict]]] = None
+    decoders: Optional[Dict[str, Union[tfds.decode.Decoder, Dict]]] = Field(None)
 
     # The shape of the processed input. Must match the output of `input()`.
-    input_shape: Tuple[int, int, int]
+    input_shape: Tuple[int, int, int] = Field()
 
     def input(self, data, training) -> tf.Tensor:
         """

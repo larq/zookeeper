@@ -10,7 +10,7 @@ setup(
     name="zookeeper",
     version="1.0.b4",
     author="Plumerai",
-    author_email="lukas@plumerai.co.uk",
+    author_email="lukas@plumerai.com, adamh@plumerai.com",
     description="A small library for managing deep learning models, hyper parameters and datasets",
     long_description=readme(),
     long_description_content_type="text/markdown",

@@ -1,8 +1,55 @@
+import inspect
 import re
 from ast import literal_eval
-from typing import Sequence, Type
+from typing import Any, Iterator, Sequence, Type
 
 from prompt_toolkit import print_formatted_text, prompt
+
+
+def is_component_class(cls: Type) -> bool:
+    try:
+        return inspect.isclass(cls) and "__component_name__" in cls.__dict__
+    except AttributeError:
+        return False
+
+
+def is_component_instance(instance: Any) -> bool:
+    return is_component_class(instance.__class__)
+
+
+def generate_subclasses(cls: Type) -> Iterator[Type]:
+    """Recursively find subclasses of `cls`."""
+
+    if not inspect.isclass(cls):
+        return
+    yield cls
+    for s in cls.__subclasses__():
+        yield from generate_subclasses(s)
+
+
+def generate_component_subclasses(cls: Type) -> Iterator[Type]:
+    """Find component subclasses of `cls`."""
+
+    for subclass in generate_subclasses(cls):
+        if is_component_class(subclass) and not inspect.isabstract(subclass):
+            yield subclass
+
+
+def generate_component_ancestors_with_field(
+    instance: Any, field_name, include_instance: bool = False
+) -> Iterator[Any]:
+    """
+    A utility method to generate from closest to furthest each ancestor
+    component instance with a field called `field_name`.
+    """
+    if include_instance:
+        parent = instance
+    else:
+        parent = instance.__component_parent__
+    while parent is not None:
+        if field_name in parent.__component_fields__:
+            yield parent
+        parent = parent.__component_parent__
 
 
 def type_name_str(type) -> str:
@@ -16,13 +63,13 @@ def type_name_str(type) -> str:
         return "<unknown type>"
 
 
-def convert_to_snake_case(name):
+def convert_to_snake_case(name: str) -> str:
     s = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
     s = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s)
     return re.sub(r"__+", "_", s).lower()
 
 
-def parse_value_from_string(string: str):
+def parse_value_from_string(string: str) -> Any:
     try:
         value = literal_eval(string)
     except (ValueError, SyntaxError):
@@ -33,7 +80,7 @@ def parse_value_from_string(string: str):
     return value
 
 
-def prompt_for_value(field_name: str, field_type):
+def prompt_for_value(field_name: str, field_type) -> Any:
     """Promt the user to input a value for the parameter `field_name`."""
 
     print_formatted_text(

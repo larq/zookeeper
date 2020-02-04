@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 from tensorflow import keras
 
+from zookeeper.core.field import ComponentField, Field
 from zookeeper.tf.dataset import Dataset
 from zookeeper.tf.model import Model
 from zookeeper.tf.preprocessing import Preprocessing
@@ -14,12 +15,12 @@ class Experiment:
     """
 
     # Nested components
-    dataset: Dataset
-    preprocessing: Preprocessing
-    model: Model
+    dataset: Dataset = ComponentField()
+    preprocessing: Preprocessing = ComponentField()
+    model: Model = ComponentField()
 
     # Parameters
-    epochs: int
-    batch_size: int
-    loss: Optional[Union[keras.losses.Loss, str]]
-    optimizer: Union[keras.optimizers.Optimizer, str]
+    epochs: int = Field()
+    batch_size: int = Field()
+    loss: Optional[Union[keras.losses.Loss, str]] = Field()
+    optimizer: Union[keras.optimizers.Optimizer, str] = Field()
