@@ -171,3 +171,16 @@ def test_component_field_partial_component_default():
     default_value = A.foo.get_default(A())  # type: ignore
     assert isinstance(default_value, ConcreteComponent)
     assert default_value.a == 5
+
+
+def test_component_field_kwargs():
+    with pytest.raises(TypeError, match="Keyword arguments can only be passed"):
+        ComponentField(a=1, b=2, c=3)
+
+    class A:
+        foo: AbstractClass = ComponentField(ConcreteComponent, a=5)
+
+    assert A.foo.has_default  # type: ignore
+    default_value = A.foo.get_default(A())  # type: ignore
+    assert isinstance(default_value, ConcreteComponent)
+    assert default_value.a == 5

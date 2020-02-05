@@ -27,8 +27,8 @@ class Field(Generic[_ComponentType, _FieldType]):
     This class is not appropriate for nesting child sub-components; for this,
     use `ComponentField` instead.
 
-    Internally, it is expected that each component will cache the result of
-    `get_default`.
+    Internally, each component will cache the default value once it has been
+    generated: `get_default` will be called at most once per instance.
     """
 
     def __init__(
@@ -49,34 +49,30 @@ class Field(Generic[_ComponentType, _FieldType]):
             f"Received: {default_value}."
         )
 
-        return_annotation = inspect.Signature.empty
-
-        if default_value is _missing:
-            default_factory = None
-        elif default_value is None or isinstance(default_value, (int, float, bool, str)):
-            default_factory = lambda instance: default_value  # noqa: E731
-        elif inspect.isfunction(default_value):
-            signature = inspect.signature(default_value)
-            return_annotation = signature.return_annotation
-            if len(signature.parameters) == 0:
-                default_factory = lambda instance: default_value()  # noqa: E731
-            elif len(signature.parameters) == 1 and all(
-                signature.parameters[name].kind
-                not in (
-                    inspect.Parameter.VAR_POSITIONAL,
-                    inspect.Parameter.VAR_KEYWORD,
-                )
-                for name in signature.parameters
-            ):
-                default_factory = default_value
-            else:
-                raise default_value_error
-        else:
-            raise default_value_error
-
+        self.name = None
+        self.host_component_class = None
+        self.type = None
         self._registered = False
-        self._return_annotation = return_annotation
-        self._default_factory = default_factory
+        self._return_annotation = inspect.Signature.empty
+
+        if default_value is _missing or utils.is_immutable(default_value):
+            self._default_value = default_value
+            return
+
+        if inspect.isfunction(default_value):
+            signature = inspect.signature(default_value)
+            if len(signature.parameters) > 1 or (
+                len(signature.parameters) == 1
+                and list(signature.parameters.values())[0].kind
+                in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD,)
+            ):
+                raise default_value_error
+
+            self._default_value = default_value
+            self._return_annotation = signature.return_annotation
+            return
+
+        raise default_value_error
 
     # This follows the PEP 487 `__set_name__` protocol; this method is called
     # automatically on every object defined within a class body, passing in the
@@ -87,21 +83,28 @@ class Field(Generic[_ComponentType, _FieldType]):
             raise ValueError("This field has already been registered to a component.")
         if name.startswith("_"):
             raise ValueError("Field names cannot start with underscores.")
-        try:
-            type_annotation = host_component_class.__annotations__[name]
-            if (
-                self._return_annotation is not inspect.Signature.empty
-                and type_annotation != self._return_annotation
-            ):
-                raise TypeError(
-                    f"Two non-equal type annotations found for field '{name}': "
-                    f"{type_annotation} and {self._return_annotation}."
-                )
-        except (AttributeError, KeyError):
+
+        type_annotation = _missing
+        for super_class in inspect.getmro(host_component_class):
+            if name in getattr(super_class, "__annotations__", {}):
+                type_annotation = super_class.__annotations__[name]
+                break
+
+        if (
+            self._return_annotation is not inspect.Signature.empty
+            and type_annotation != _missing
+            and type_annotation != self._return_annotation
+        ):
+            raise TypeError(
+                f"Two non-equal type annotations found for field '{name}': "
+                f"{type_annotation} and {self._return_annotation}."
+            )
+
+        if type_annotation is _missing:
             if self._return_annotation is inspect.Signature.empty:
                 raise TypeError(
                     "Fields must be defined inside the component class definition, "
-                    "with a type-annotation in one of the following ways:\n\n"
+                    "with a type annotation in one of the following ways:\n\n"
                     "```\n"
                     "@component\n"
                     "class ComponentClass:\n"
@@ -129,7 +132,7 @@ class Field(Generic[_ComponentType, _FieldType]):
     def has_default(self) -> bool:
         if not self._registered:
             raise ValueError("This field has not been registered to a component.")
-        return self._default_factory is not None
+        return self._default_value is not _missing
 
     def get_default(self, component_instance: _ComponentType) -> _FieldType:
         if not self._registered:
@@ -146,25 +149,52 @@ class Field(Generic[_ComponentType, _FieldType]):
                 f"{repr(component_instance)}."
             )
 
-        return self._default_factory(component_instance)
+        if not inspect.isfunction(self._default_value):
+            return self._default_value
+
+        params = inspect.signature(self._default_value).parameters
+        if len(params) == 0:
+            return self._default_value()  # type: ignore
+        return self._default_value(component_instance)  # type: ignore
 
 
 # TODO: Maybe add lower-case alias `field`?
 
 
 class ComponentField(Field, Generic[_ComponentType, _FieldType]):
+    """
+    A Zookeeper field for nesting child sub-components.
+
+    `ComponentField`s must be defined with a type annotation: a Python class
+    from which all possible component instances for the field must inherit.
+
+    A default component class may also be provided, which will be used to
+    instantiate a value if there is no configured value for this field. If a
+    default component class is provided, keyword arguments corresponding to the
+    field names of the default component may optionally also be provided to be
+    used to initialise the default component.
+    """
+
     def __init__(
         self,
         default_component_class: Union[
             _MISSING, _FieldType, PartialComponent[_FieldType]
         ] = _missing,
+        **kwargs,
     ):
         if default_component_class is _missing:
-            default_factory = None
+            if len(kwargs) > 0:
+                raise TypeError(
+                    "Keyword arguments can only be passed to `ComponentField` if "
+                    "a default component class is also passed."
+                )
         elif isinstance(
             default_component_class, PartialComponent
         ) or utils.is_component_class(default_component_class):
-            default_factory = default_component_class
+            if len(kwargs) > 0:
+                default_component_class = PartialComponent(
+                    default_component_class, **kwargs
+                )
         elif utils.is_component_instance:
             raise TypeError(
                 "The `default_component_class` passed to `ComponentField` must be "
@@ -177,17 +207,23 @@ class ComponentField(Field, Generic[_ComponentType, _FieldType]):
                 "either a component class or a `PartialComponent`."
             )
 
+        self.name = _missing
+        self.host_component_class = _missing
+        self.type = _missing
         self._registered = False
-        self._default_factory = default_factory
+        self._default_value = default_component_class
 
     def __set_name__(self, host_component_class: Type[_ComponentType], name: str):
         if self._registered:
             raise ValueError("This field has already been registered to a component.")
         if name.startswith("_"):
             raise ValueError("Field names cannot start with underscores.")
-        try:
-            type_annotation = host_component_class.__annotations__[name]
-        except (AttributeError, KeyError):
+        type_annotation = _missing
+        for super_class in inspect.getmro(host_component_class):
+            if name in getattr(super_class, "__annotations__", {}):
+                type_annotation = super_class.__annotations__[name]
+                break
+        if type_annotation is _missing:
             raise TypeError(
                 "ComponentFields must be defined inside the component class definition, "
                 "with a type-annotation as follows:\n\n"
@@ -227,4 +263,4 @@ class ComponentField(Field, Generic[_ComponentType, _FieldType]):
         # We build the instance without passing in any additional arguments. The
         # child instance will be able to pick up any missing field values from
         # the parent in the usual way, as it will be a nested sub-component.
-        return self._default_factory()
+        return self._default_value()

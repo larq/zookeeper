@@ -1,7 +1,7 @@
 import inspect
 import re
 from ast import literal_eval
-from typing import Any, Iterator, Sequence, Type
+from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
 from prompt_toolkit import print_formatted_text, prompt
 
@@ -50,6 +50,34 @@ def generate_component_ancestors_with_field(
         if field_name in parent.__component_fields__:
             yield parent
         parent = parent.__component_parent__
+
+
+T = TypeVar("T")
+
+
+def wrap_in_callable(value: T) -> Callable[[], T]:
+    def wrapper():
+        return value
+
+    return wrapper
+
+
+def is_immutable(value: Any) -> bool:
+    """
+    Decide the immutability of `value`. Recurses a single level if `value` is a
+    set or a tuple, but does not recurse infinitely.
+    """
+    return (
+        value is None
+        or isinstance(value, (int, float, bool, str, frozenset))
+        or (
+            isinstance(value, (set, tuple))
+            and all(
+                isinstance(inner_value, (int, float, bool, str, frozenset))
+                for inner_value in value
+            )
+        )
+    )
 
 
 def type_name_str(type) -> str:

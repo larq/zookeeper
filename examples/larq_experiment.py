@@ -1,25 +1,25 @@
 """An example of how to use Zookeeper to run a Larq BinaryNet experiment on MNIST."""
 
 from functools import partial
-from typing import Tuple, Union
+from typing import Sequence, Tuple, Union
 
 import larq as lq
 import tensorflow as tf
 
-from zookeeper import cli, component, task
+from zookeeper import ComponentField, Field, cli, component, task
 from zookeeper.tf import Dataset, Experiment, Model, Preprocessing, TFDSDataset
 
 
 @component
 class Mnist(TFDSDataset):
-    name = "mnist"
-    train_split = "train"
-    validation_split = "test"
+    name = Field("mnist")
+    train_split = Field("train")
+    validation_split = Field("test")
 
 
 @component
 class PadCropAndFlip(Preprocessing):
-    pad_size: int
+    pad_size: int = Field()
 
     def input(self, data, training):
         image = data["image"]
@@ -39,12 +39,12 @@ class PadCropAndFlip(Preprocessing):
 
 @component
 class BinaryNet(Model):
-    dataset: Dataset
-    preprocessing: Preprocessing
+    dataset: Dataset = ComponentField()
+    preprocessing: Preprocessing = ComponentField()
 
-    filters: int = 128
-    dense_units: int = 1024
-    kernel_size: Union[int, Tuple[int, int]] = (3, 3)
+    filters: int = Field(128)
+    dense_units: int = Field(1024)
+    kernel_size: Union[int, Tuple[int, int]] = Field((3, 3))
 
     def build(self, input_shape):
         kwhparams = dict(
@@ -103,20 +103,22 @@ class BinaryNet(Model):
 
 @task
 class BinaryNetMnist(Experiment):
-    dataset = Mnist()
-    preprocessing = PadCropAndFlip(pad_size=32, input_shape=(28, 28, 1))
-    model = BinaryNet()
+    dataset = ComponentField(Mnist)
+    preprocessing = ComponentField(
+        PadCropAndFlip, pad_size=32, input_shape=lambda: (28, 28, 1)
+    )
+    model = ComponentField(BinaryNet)
 
-    epochs = 100
-    batch_size = 128
+    epochs = Field(100)
+    batch_size = Field(128)
 
-    loss = "sparse_categorical_crossentropy"
+    loss = Field("sparse_categorical_crossentropy")
 
-    metrics = ["accuracy"]
+    metrics: Sequence[str] = Field(lambda: ["accuracy"])
 
-    learning_rate = 5e-3
+    learning_rate: float = Field(5e-3)
 
-    @property
+    @Field
     def optimizer(self):
         return tf.keras.optimizers.Adam(self.learning_rate)
 

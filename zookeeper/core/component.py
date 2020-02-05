@@ -360,6 +360,20 @@ def component(cls):
             f"WARNING: Component {cls.__name__} has no defined fields."
         )
 
+    # Throw an error if there is a field defined on a superclass that has been
+    # overriden with a non-Field value.
+    for name in dir(cls):
+        if name in fields and not isinstance(getattr(cls, name), Field):
+            super_class = fields[name].host_component_class
+            raise ValueError(
+                f"Field '{name}' is defined on super-class {super_class.__name__}. "
+                f"In subclass {cls.__name__}, '{name}' has been overriden with value: "
+                f"{getattr(cls, name)}.\n\n"
+                f"If you wish to change the default value of field '{name}' in a "
+                f"subclass of {super_class.__name__}, please wrap the new default "
+                "value in a new `Field` instance."
+            )
+
     cls.__component_fields__ = fields
 
     # Override class methods to correctly interact with component fields.

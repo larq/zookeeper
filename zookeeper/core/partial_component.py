@@ -54,8 +54,8 @@ class PartialComponent(Generic[_ComponentType]):
                     "not correspond to any field of component class "
                     f"'{component_class.__name__}'."
                 )
-            if isinstance(value, (int, float, bool, str, type(None), PartialComponent)):
-                lazy_kwargs[name] = lambda: value
+            if utils.is_immutable(value):
+                lazy_kwargs[name] = utils.wrap_in_callable(value)
             else:
                 if not inspect.isfunction(value):
                     raise _kwargs_error

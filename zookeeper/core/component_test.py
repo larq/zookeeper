@@ -334,3 +334,15 @@ def test_type_check(ExampleComponentClass):
         match="Field 'a' of component 'x' is annotated with type '<class 'int'>', which is not satisfied by default value 4.5.",
     ):
         instance.a
+
+
+def test_error_if_field_overwritten_in_subclass():
+    @component
+    class SuperClass:
+        foo: str = Field("bar")
+
+    with pytest.raises(ValueError, match="Field 'foo' is defined on super-class"):
+
+        @component
+        class SubClass(SuperClass):
+            foo = 1
