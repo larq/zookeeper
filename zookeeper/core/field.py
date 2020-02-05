@@ -78,7 +78,7 @@ class Field(Generic[_ComponentType, _FieldType]):
         self._return_annotation = return_annotation
         self._default_factory = default_factory
 
-    # This follows the PEP 487 `__set_name__` protocol; this name is called
+    # This follows the PEP 487 `__set_name__` protocol; this method is called
     # automatically on every object defined within a class body, passing in the
     # class object and name of the descriptor. We use it here to obtain the name
     # and type of the field.
