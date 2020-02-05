@@ -317,7 +317,7 @@ def __component_init__(instance, **kwargs):
         field.name
         for field in instance.__component_fields__.values()
         if field.has_default
-    ) | set(name for name in kwargs.keys())
+    ) | set(kwargs)
 
 
 ######################

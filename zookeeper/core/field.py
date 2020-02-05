@@ -53,7 +53,7 @@ class Field(Generic[_ComponentType, _FieldType]):
 
         if default_value is _missing:
             default_factory = None
-        elif isinstance(default_value, (int, float, bool, str, type(None))):
+        elif default_value is None or isinstance(default_value, (int, float, bool, str)):
             default_factory = lambda instance: default_value  # noqa: E731
         elif inspect.isfunction(default_value):
             signature = inspect.signature(default_value)
