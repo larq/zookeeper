@@ -14,11 +14,11 @@ pip install zookeeper
 
 The fundamental building blocks of Zookeeper are components. The
 [`@component`](zookeeper/component.py) decorator is used to turn classes into
-components. These component classes can have configurable parameters, which are
-declared using class-level type annotations (in a similar way to [Python
-dataclasses](https://docs.python.org/3/library/dataclasses.html)). These
-parameters can be Python objects or nested sub-components, and need not be set
-with a default value.
+components. These component classes can have configurable fields, which are
+declared with the `Field` constructor and class-level type annotations. Fields
+can be created with or without default values. Components can also be nested,
+with `ComponentField`s, such that child componenents can access the field values
+defined on their parents.
 
 For example:
 
@@ -27,22 +27,22 @@ from zookeeper import component
 
 @component
 class ChildComponent:
-    a: int                  # An `int` parameter, with no default set
-    b: str = "foo"          # A `str` parameter, which by default will be `foo`
+    a: int = Field()                          # An `int` field with no default set
+    b: str = Field("foo")                     # A `str` field with default value `"foo"`
 
 @component
 class ParentComponent:
-    a: int                  # The same `int` parameter as the child
-    child: ChildComponent   # A nested component parameter, of type `ChildComponent`
+    a: int = Field()                          # The same `int` field as the child
+    child: ChildComponent = ComponentField()  # A nested component field, of type `ChildComponent`
 ```
 
 After instantiation, components can be 'configured' with a configuration
-dictionary, containing values for a tree of nested parameters. This process
-automatically injects the correct values into each parameter.
+dictionary, containing values for a tree of nested fields. This process
+automatically injects the correct values into each field.
 
-If a child sub-component declares a parameter which already exists in some
-containing parent, then it will pick up the value that's set on the parent,
-unless a 'scoped' value is set on the child.
+If a child sub-component declares a field which already exists in some
+containing ancestor component, then it will pick up the value that's set on the
+parent, unless a 'scoped' value is set on the child.
 
 For example:
 
@@ -88,7 +88,7 @@ from zookeeper import cli, task
 
 @task
 class UseChildA:
-    parent: ParentComponent
+    parent: ParentComponent = ComponentField()
     def run(self):
         print(self.parent.child.a)
 
