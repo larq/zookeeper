@@ -71,7 +71,7 @@ print(c)
 
 import functools
 import inspect
-from typing import Any, Dict, Optional, Set, Type
+from typing import Any, Dict, List, Optional, Type
 
 from prompt_toolkit import print_formatted_text
 from typeguard import check_type
@@ -230,8 +230,8 @@ def _wrap_dir(component_cls: Type) -> None:
     fn = component_cls.__dir__  # type: ignore
 
     @functools.wraps(fn)
-    def wrapped_fn(instance) -> Set[str]:
-        return set(fn(instance)) | set(instance.__component_fields__.keys())
+    def wrapped_fn(instance) -> List[str]:
+        return list(set(fn(instance)) | set(instance.__component_fields__.keys()))
 
     component_cls.__dir__ = wrapped_fn
 
@@ -354,7 +354,12 @@ def component(cls):
         for name, value in base_class.__dict__.items():
             if isinstance(value, Field):
                 fields[name] = value
-    # TODO: maybe throw/warn if no fields defined?
+
+    if len(fields) == 0:
+        utils.print_formatted_text(
+            f"WARNING: Component {cls.__name__} has no defined fields."
+        )
+
     cls.__component_fields__ = fields
 
     # Override class methods to correctly interact with component fields.
