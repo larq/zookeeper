@@ -9,14 +9,14 @@ from zookeeper.core.partial_component import PartialComponent
 
 def test_init_non_immutable_non_callable():
     with pytest.raises(
-        TypeError, match="If `default_value` is passed to `Field`, it must be either:"
+        TypeError, match="If `default` is passed to `Field`, it must be either:"
     ):
         Field([1, 2, 3])
 
 
 def test_init_callable_many_arg():
     with pytest.raises(
-        TypeError, match="If `default_value` is passed to `Field`, it must be either:"
+        TypeError, match="If `default` is passed to `Field`, it must be either:"
     ):
         Field(lambda x, y, z: x + y + z)
 
@@ -137,7 +137,7 @@ class ConcreteComponent:
 def test_component_field_component_instance_default():
     with pytest.raises(
         TypeError,
-        match="The `default_component_class` passed to `ComponentField` must be a component class, not a component instance.",
+        match="The `default` passed to `ComponentField` must be a component class, not a component instance.",
     ):
         ComponentField(ConcreteComponent())
 
