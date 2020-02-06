@@ -26,19 +26,19 @@ configuration scoping:
 ```
 @component
 class A:
-    x: int
-    z: float
+    x: int = Field()
+    z: float = Field()
 
 @component
 class B:
-    a: A
-    y: str = "foo"
+    a: A = Field()
+    y: str = Field("foo")
 
 @component
 class C:
-    b: B
-    x: int
-    z: float = 3.14
+    b: B = Field()
+    x: int = Field()
+    z: float = Field(3.14)
 
 c = C()
 configure(
@@ -69,304 +69,327 @@ print(c)
 ```
 """
 
+import functools
 import inspect
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from prompt_toolkit import print_formatted_text
 from typeguard import check_type
 
-from zookeeper.core.utils import (
-    convert_to_snake_case,
-    prompt_for_component_subclass,
-    prompt_for_value,
-    type_name_str,
-)
+from zookeeper.core import utils
+from zookeeper.core.field import ComponentField, Field
 
 try:  # pragma: no cover
-    from colorama import Fore
+    from colorama import Fore, Style
 
-    BLUE, RESET, YELLOW = Fore.BLUE, Fore.RESET, Fore.YELLOW
+    RED, YELLOW = Fore.RED, Fore.YELLOW
+    BRIGHT, RESET_ALL = Style.BRIGHT, Style.RESET_ALL
 except ImportError:  # pragma: no cover
-    BLUE = RESET = YELLOW = ""
+    BRIGHT = RED = RESET_ALL = YELLOW = ""
 
 
-def is_component_class(cls):
+###################################
+# Component class method wrappers #
+###################################
+
+
+def _type_check_and_cache(instance, field: Field, result: Any) -> None:
+    """A utility method for `_wrap_getattribute`."""
+
     try:
-        return "__component_name__" in cls.__dict__
-    except AttributeError:
-        return False
+        check_type(field.name, result, field.type)
+    except TypeError:
+        raise TypeError(
+            f"Field '{field.name}' of component '{instance.__component_name__}' is "
+            f"annotated with type '{field.type}', which is not satisfied by "
+            f"default value {result}."
+        ) from None
+    object.__setattr__(instance, field.name, result)
 
 
-def generate_subclasses(cls):
-    """Recursively find subclasses of `cls`."""
+def _wrap_getattribute(component_cls: Type) -> None:
+    """
+    The logic for this overriden `__getattribute__` is as follows:
 
-    if not inspect.isclass(cls):
-        return
-    yield cls
-    for s in cls.__subclasses__():
-        yield from generate_subclasses(s)
+    During component instantiation, any values passed to `__init__` are stored
+    in a dict on the instance `__component_instantiated_field_values__`. This
+    means that a priori the `__dict__` of a component instance is empty (of
+    non-dunder attributes).
 
+    Field values can come from three sources, in descending order of priority:
+      1) A value that was passed into `configure` (e.g. via the CLI), which is
+         stored in the `__component_configured_field_values__` dict on the
+         component instance or some parent component instance.
+      2) A value that was passed in at instantiation, which is stored in the
+         `__component_instantiated_field_values__` dict on the current component
+         instance (but not any parent instance).
+      3) A default value obtained from the `get_default` factory method of a
+         field defined on the component class of the current instance if it has
+         one, or otherwise from the factory of the field on the component class
+         of the nearest parent component instance with a field of the same name,
+         et cetera.
 
-def generate_component_subclasses(cls):
-    """Find component subclasses of `cls`."""
+    Once we find a field value from one of these three sources, we set the value
+    on the instance `__dict__` (i.e. we 'cache' it).
 
-    for subclass in generate_subclasses(cls):
-        if is_component_class(subclass) and not inspect.isabstract(subclass):
-            yield subclass
+    This means that if we find a value in the instance `__dict__` we can
+    immediately return it without worrying about checking the three cases above
+    in order. It also means that each look-up other than the first will incur no
+    substantial time penalty.
+    """
+    fn = component_cls.__getattribute__  # type: ignore
 
+    @functools.wraps(fn)
+    def wrapped_fn(instance, name):
+        # If this is not an access to a field, return via the wrapped function.
+        if name not in fn(instance, "__component_fields__"):
+            return fn(instance, name)
 
-#####################
-# Component fields. #
-#####################
+        # If there is a cached value, return it immediately.
+        if name in instance.__dict__:
+            return instance.__dict__[name]
 
+        field = instance.__component_fields__[name]
 
-class Field:
-    def __init__(self, annotated_type):
-        self.annotated_type = annotated_type
-
-
-class EmptyField(Field):
-    pass
-
-
-class InheritedField(Field):
-    def __init__(self, annotated_type, is_overriden=False):
-        super().__init__(annotated_type)
-        self.is_overriden = is_overriden
-
-
-class NonEmptyField(Field):
-    def __init__(self, annotated_type, is_overriden):
-        super().__init__(annotated_type)
-        self.is_overriden = is_overriden
-
-
-class EmptyFieldError(AttributeError):
-    def __init__(self, component, field_name):
-        message = (
-            f"The component `{component.__component_name__}` has no default or "
-            f"configured value for field `{field_name}`. Please configure the "
-            "component to provide a value."
-        )
-        super().__init__(message)
-
-
-# Constants which are used internally during component configuration. They are
-# used as placeholders to indicate to a nested sub-component that an ancestor
-# component has a value for a given field name.
-OVERRIDEN_CONF_VALUE = object()
-NON_OVERRIDEN_CONF_VALUE = object()
-
-
-def set_field_value(instance, name, value):
-    assert not instance.__component_configured__
-    assert name in instance.__component_fields__
-    field = instance.__component_fields__[name]
-
-    if value == OVERRIDEN_CONF_VALUE:
-        instance.__component_fields__[name] = InheritedField(
-            annotated_type=field.annotated_type, is_overriden=True
-        )
-    elif value == NON_OVERRIDEN_CONF_VALUE:
-        if isinstance(field, EmptyField):
-            instance.__component_fields__[name] = InheritedField(
-                annotated_type=field.annotated_type, is_overriden=False
-            )
-    else:
-        object.__setattr__(instance, name, value)
-        instance.__component_fields__[name] = NonEmptyField(
-            annotated_type=field.annotated_type, is_overriden=False
-        )
-
-
-####################################
-# Component class method wrappers. #
-####################################
-
-
-def init_wrapper(init_fn):
-    # Components need to be instantiable without arguments, so check that
-    # `init_fn` does not accept any positional arguments without default values.
-    for i, (name, param) in enumerate(inspect.signature(init_fn).parameters.items()):
-        if (
-            i > 0
-            and param.default == inspect.Parameter.empty
-            and param.kind
-            not in [inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD]
+        # Next, try Source 1)
+        for ancestor_with_field in utils.generate_component_ancestors_with_field(
+            instance, field_name=name, include_instance=True
         ):
-            raise ValueError(
-                "The `__init__` method of a component must not accept any "
-                "positional arguments, as the component configuration process "
-                "requires component classes to be instantiable without arguments."
+            if name in ancestor_with_field.__component_configured_field_values__:
+                result = ancestor_with_field.__component_configured_field_values__[name]
+                # Type-check, cache the result, delete it if possible from the
+                # instantiated values, and return it.
+                _type_check_and_cache(instance, field, result)
+                if name in instance.__component_instantiated_field_values__:
+                    del instance.__component_instantiated_field_values__[name]
+                return result
+
+        # Next, try Source 2)
+        if name in instance.__component_instantiated_field_values__:
+            # Type-check, cache, and return the result.
+            result = instance.__component_instantiated_field_values__[name]
+            _type_check_and_cache(instance, field, result)
+            return result
+
+        # Finally, try Source 3)
+        try:
+            result = field.get_default(instance)
+        except AttributeError as e:
+            # Find the closest parent with a field of the same name, and
+            # recurse.
+            parent_instance = next(
+                utils.generate_component_ancestors_with_field(instance, name), None
             )
+            try:
+                result = getattr(parent_instance, name)
+            except AttributeError:
+                # From here we raise the original exception instead because it
+                # will correctly refer to this component rather than some parent
+                # component.
+                raise e from None
 
-    def __component_init__(instance, **kwargs):
-        # Fake 'super' call.
-        if init_fn != object.__init__:
-            init_fn(instance, **kwargs)
+        # Type-check, cache, and return the result.
+        _type_check_and_cache(instance, field, result)
+        return result
 
-        instance.__component_fields__ = {}
+    component_cls.__getattribute__ = wrapped_fn
 
-        # Populate `__component_fields__` with all annotations set on this class
-        # and all superclasses. We have to go through the MRO chain and collect
-        # them in reverse order so that they are correctly overriden.
-        annotations = {}
-        for base_class in reversed(inspect.getmro(instance.__class__)):
-            annotations.update(getattr(base_class, "__annotations__", {}))
-        instance.__component_fields__ = {}
-        for name, annotated_type in annotations.items():
-            if name in object.__dir__(instance):  # type: ignore
-                instance.__component_fields__[name] = NonEmptyField(
-                    annotated_type, is_overriden=False
+
+def _wrap_setattr(component_cls: Type) -> None:
+    fn = component_cls.__setattr__  # type: ignore
+
+    @functools.wraps(fn)
+    def wrapped_fn(instance, name, value):
+        try:
+            value_defined_on_class = getattr(component_cls, name)
+            if isinstance(value_defined_on_class, Field):
+                raise ValueError(
+                    "Setting component field values directly is prohibited. Use "
+                    "Zookeeper component configuration to set field values."
                 )
-            else:
-                instance.__component_fields__[name] = EmptyField(annotated_type)
+        except AttributeError:
+            pass
+        return fn(instance, name, value)
 
-        if init_fn == object.__init__:
-            for name, value in kwargs.items():
-                if name in instance.__component_fields__:
-                    set_field_value(instance, name, value)
-                else:
-                    raise ValueError(
-                        f"Argument '{name}' does not correspond to any annotated field "
-                        f"of '{type_name_str(instance.__class__)}'."
-                    )
-
-    return __component_init__
+    component_cls.__setattr__ = wrapped_fn
 
 
-def dir_wrapper(dir_fn):
-    def __component_dir__(instance):
-        return set(dir_fn(instance)) | set(instance.__component_fields__.keys())
+def _wrap_delattr(component_cls: Type) -> None:
+    fn = component_cls.__delattr__  # type: ignore
 
-    return __component_dir__
-
-
-def getattribute_wrapper(getattr_fn):
-    def __component_getattr__(instance, name):
-        component_fields = object.__getattribute__(instance, "__component_fields__")
-        if name in component_fields:
-            field = component_fields[name]
-            if isinstance(field, EmptyField):
-                raise EmptyFieldError(instance, name)
-            if isinstance(field, NonEmptyField):
-                return object.__getattribute__(instance, name)
-            if isinstance(field, InheritedField):
-                return getattr(instance.__component_parent__, name)
-        else:
-            return getattr_fn(instance, name)
-        raise AttributeError
-
-    return __component_getattr__
-
-
-def setattr_wrapper(setattr_fn):
-    def __component_setattr__(instance, name, value):
+    @functools.wraps(fn)
+    def wrapped_fn(instance, name):
         if name in instance.__component_fields__:
-            raise ValueError(
-                "Setting component field values directly is prohibited. Use Zookeeper "
-                "component configuration to set field values."
-            )
-        else:
-            return setattr_fn(instance, name, value)
+            raise ValueError("Deleting component field values is prohibited.")
+        return fn(instance, name)
 
-    return __component_setattr__
+    component_cls.__delattr__ = wrapped_fn
 
 
-def delattr_wrapper(delattr_fn):
-    def __component_delattr__(instance, name):
-        if name in instance.__component_fields__:
-            raise ValueError("Deleting component fields is prohibited.")
-        return delattr_fn(instance, name)
+def _wrap_dir(component_cls: Type) -> None:
+    fn = component_cls.__dir__  # type: ignore
 
-    return __component_delattr__
+    @functools.wraps(fn)
+    def wrapped_fn(instance) -> List[str]:
+        return list(set(fn(instance)) | set(instance.__component_fields__.keys()))
+
+    component_cls.__dir__ = wrapped_fn
 
 
-##################################
-# Pretty string representations. #
-##################################
+#################################
+# Pretty string representations #
+#################################
 
 
 # Indent for nesting in the string representation
 INDENT = " " * 4
 
 
-def str_key_val(key, value, color=True, single_line=False):
-    if is_component_class(value.__class__):
+def _field_key_val_str(key: str, value: Any, color: bool, single_line: bool) -> str:
+    if utils.is_component_instance(value):
         if single_line:
             value = repr(value)
         else:
             value = f"\n{INDENT}".join(str(value).split("\n"))
     elif callable(value):
         value = "<callable>"
-    elif type(value) == str:
+    elif isinstance(value, str):
         value = f'"{value}"'
-    return f"{BLUE}{key}{RESET}={YELLOW}{value}{RESET}" if color else f"{key}={value}"
+
+    return f"{key}={value}" if color else f"{key}={value}"
 
 
 def __component_repr__(instance):
-    fields = ", ".join(
-        [
-            str_key_val(
-                field_name, getattr(instance, field_name), color=False, single_line=True
-            )
-            for field_name in sorted(instance.__component_fields__)
-        ]
-    )
-    return f"{instance.__class__.__name__}({fields})"
+    field_strings = [
+        _field_key_val_str(
+            field_name, getattr(instance, field_name), color=False, single_line=True
+        )
+        for field_name in instance.__component_fields__.keys()
+    ]
+
+    joined_str = ", ".join(field_strings)
+
+    return f"{instance.__class__.__name__}({joined_str})"
 
 
 def __component_str__(instance):
-    fields = f",\n{INDENT}".join(
-        [
-            str_key_val(field_name, getattr(instance, field_name))
-            for field_name in sorted(instance.__component_fields__)
-        ]
-    )
-    return f"{instance.__class__.__name__}(\n{INDENT}{fields}\n)"
+    field_strings = [
+        _field_key_val_str(
+            field_name, getattr(instance, field_name), color=True, single_line=False
+        )
+        for field_name in instance.__component_fields__.keys()
+    ]
+
+    joined_str = f",\n{INDENT}".join(field_strings)
+
+    return f"{instance.__class__.__name__}(\n{INDENT}{joined_str}\n)"
 
 
-#######################
-# Exported functions. #
-#######################
+##########################
+# A component `__init__` #
+##########################
+
+
+def __component_init__(instance, **kwargs):
+    """
+    Accepts keyword-arguments corresponding to fields defined on the component.
+    """
+
+    # Use the `kwargs` to set field values.
+    for name, value in kwargs.items():
+        if name not in instance.__component_fields__:
+            raise TypeError(
+                "Keyword arguments passed to component `__init__` must correspond to "
+                f"component fields. Received non-matching argument '{name}'."
+            )
+
+    # Save a shallow-clone of the arguments.
+    instance.__component_instantiated_field_values__ = {**kwargs}
+
+    # This will contain configured field values that apply to this instance, if
+    # any, which override everything else.
+    instance.__component_configured_field_values__ = {}
+
+    # This will contain the names of every field of this instance and all
+    # component ancestors for which a value is defined. More names will be added
+    # during configuration.
+    instance.__component_fields_with_values_in_scope__ = set(
+        field.name
+        for field in instance.__component_fields__.values()
+        if field.has_default
+    ) | set(kwargs)
+
+
+######################
+# Exported functions #
+######################
 
 
 def component(cls):
     """A decorater which turns a class into a Zookeeper component."""
 
     if not inspect.isclass(cls):
-        raise ValueError("Only classes can be decorated with @component.")
+        raise TypeError("Only classes can be decorated with @component.")
 
     if inspect.isabstract(cls):
-        raise ValueError("Abstract classes cannot be decorated with @component.")
+        raise TypeError("Abstract classes cannot be decorated with @component.")
 
-    if is_component_class(cls):
-        raise ValueError(
-            f"The class {cls} is already a component; the @component decorator cannot "
-            "be applied again."
+    if utils.is_component_class(cls):
+        raise TypeError(
+            f"The class {cls.__name__} is already a component; the @component decorator "
+            "cannot be applied again."
         )
 
-    cls.__component_name__ = convert_to_snake_case(cls.__name__)
-    cls.__component_parent__ = None
-    cls.__component_configured__ = False
-    cls.__component_fields__ = {}
+    if cls.__init__ not in (object.__init__, __component_init__):
+        # A component class could have `__component_init__` as its init method
+        # if it inherits from a component.
+        raise TypeError("Component classes must not define a custom `__init__` method.")
+    cls.__init__ = __component_init__
 
-    # Override `__getattribute__`, `__setattr__`, and `__delattr__` to correctly
-    # manage getting, setting, and deleting component fields.
-    cls.__getattribute__ = getattribute_wrapper(cls.__getattribute__)  # type: ignore
-    cls.__setattr__ = setattr_wrapper(cls.__setattr__)
-    cls.__delattr__ = delattr_wrapper(cls.__delattr__)
+    # Populate `__component_fields__` with all fields defined on this class and
+    # all superclasses. We have to go through the MRO chain and collect them in
+    # reverse order so that they are correctly overriden.
+    fields = {}
+    for base_class in reversed(inspect.getmro(cls)):
+        for name, value in base_class.__dict__.items():
+            if isinstance(value, Field):
+                fields[name] = value
 
-    # Override `__dir__` so that field names are included.
-    cls.__dir__ = dir_wrapper(cls.__dir__)
+    if len(fields) == 0:
+        utils.print_formatted_text(
+            f"WARNING: Component {cls.__name__} has no defined fields."
+        )
 
-    # Override `__init__` to perform component initialisation and (potentially)
-    # set key-word args as field values.
-    cls.__init__ = init_wrapper(cls.__init__)
+    # Throw an error if there is a field defined on a superclass that has been
+    # overriden with a non-Field value.
+    for name in dir(cls):
+        if name in fields and not isinstance(getattr(cls, name), Field):
+            super_class = fields[name].host_component_class
+            raise ValueError(
+                f"Field '{name}' is defined on super-class {super_class.__name__}. "
+                f"In subclass {cls.__name__}, '{name}' has been overriden with value: "
+                f"{getattr(cls, name)}.\n\n"
+                f"If you wish to change the default value of field '{name}' in a "
+                f"subclass of {super_class.__name__}, please wrap the new default "
+                "value in a new `Field` instance."
+            )
+
+    cls.__component_fields__ = fields
+
+    # Override class methods to correctly interact with component fields.
+    _wrap_getattribute(cls)
+    _wrap_setattr(cls)
+    _wrap_delattr(cls)
+    _wrap_dir(cls)
 
     # Components should have nice `__str__` and `__repr__` methods.
     cls.__str__ = __component_str__
     cls.__repr__ = __component_repr__
+
+    # These will be overriden during configuration.
+    cls.__component_name__ = cls.__name__
+    cls.__component_parent__ = None
+    cls.__component_configured__ = False
 
     return cls
 
@@ -395,46 +418,39 @@ def configure(
         instance.__component_name__ = name
 
     # Set the correct value for each field.
-    for field_name, field in instance.__component_fields__.items():
-        full_name = f"{instance.__component_name__}.{field_name}"
+    for field in instance.__component_fields__.values():
+        full_name = f"{instance.__component_name__}.{field.name}"
         field_type_name = (
-            field.annotated_type.__name__
-            if inspect.isclass(field.annotated_type)
-            else str(field.annotated_type)
+            field.type.__name__ if inspect.isclass(field.type) else str(field.type)
         )
-        component_subclasses = list(generate_component_subclasses(field.annotated_type))
+        component_subclasses = list(utils.generate_component_subclasses(field.type))
 
-        if field_name in conf:
-            field_value = conf[field_name]
+        if field.name in conf:
+            conf_field_value = conf[field.name]
             # The configuration value could be a string specifying a component
             # class to instantiate.
-            if len(component_subclasses) > 0 and isinstance(field_value, str):
+            if len(component_subclasses) > 0 and isinstance(conf_field_value, str):
                 for subclass in component_subclasses:
                     if (
-                        field_value == subclass.__name__
-                        or field_value == subclass.__qualname__
-                        or convert_to_snake_case(field_value)
-                        == convert_to_snake_case(subclass.__name__)
+                        conf_field_value == subclass.__name__
+                        or conf_field_value == subclass.__qualname__
+                        or utils.convert_to_snake_case(conf_field_value)
+                        == utils.convert_to_snake_case(subclass.__name__)
                     ):
-                        field_value = subclass()
+                        conf_field_value = subclass()
                         break
 
-            set_field_value(instance, field_name, field_value)
+            # Set the value on the instance.
+            instance.__component_configured_field_values__[
+                field.name
+            ] = conf_field_value
 
-            # If this is a 'raw' value, add a placeholder to `conf` so that it
-            # gets picked up correctly in sub-components.
-            if (
-                field_value != OVERRIDEN_CONF_VALUE
-                and field_value != NON_OVERRIDEN_CONF_VALUE
-            ):
-                conf[field_name] = OVERRIDEN_CONF_VALUE
+            # This value has now been 'consumed', so delete it from `conf`.
+            del conf[field.name]
 
-        # If there's no config value but a value is already set on the instance,
-        # we only need to add a placeholder to `conf` to make sure that the
-        # value will be accessible from sub-components. `hasattr` isn't safe so
-        # we have to check membership directly.
-        elif field_name in object.__dir__(instance):  # type: ignore
-            conf[field_name] = NON_OVERRIDEN_CONF_VALUE
+        # If there's a value in scope, we don't need to do anything.
+        elif field.name in instance.__component_fields_with_values_in_scope__:
+            pass
 
         # If there is only one concrete component subclass of the annotated
         # type, we assume the user must intend to use that subclass, and so
@@ -442,37 +458,33 @@ def configure(
         elif len(component_subclasses) == 1:
             component_cls = list(component_subclasses)[0]
             print_formatted_text(
-                f"'{type_name_str(component_cls)}' is the only concrete component "
+                f"'{utils.type_name_str(component_cls)}' is the only concrete component "
                 f"class that satisfies the type of the annotated field '{full_name}'. "
                 "Using an instance of this class by default."
             )
-            # This is safe because we don't allow `__init__` to have any
-            # positional arguments without defaults.
-            field_value = component_cls()
+            # This is safe because we don't allow custom `__init__` methods.
+            conf_field_value = component_cls()
 
-            set_field_value(instance, field_name, field_value)
-
-            # Add a placeholder to `conf` to so that this value can be accessed
-            # by sub-components.
-            conf[field_name] = NON_OVERRIDEN_CONF_VALUE
+            # Set the value on the instance.
+            instance.__component_configured_field_values__[
+                field.name
+            ] = conf_field_value
 
         # If we are running interactively, prompt for a value.
         elif interactive:
             if len(component_subclasses) > 0:
-                component_cls = prompt_for_component_subclass(
+                component_cls = utils.prompt_for_component_subclass(
                     full_name, component_subclasses
                 )
-                # This is safe because we don't allow `__init__` to have any
-                # positional arguments without defaults.
-                field_value = component_cls()
+                # This is safe because we don't allow custom `__init__` methods.
+                conf_field_value = component_cls()
             else:
-                field_value = prompt_for_value(full_name, field.annotated_type)
+                conf_field_value = utils.prompt_for_value(full_name, field.type)
 
-            set_field_value(instance, field_name, field_value)
-
-            # Add a placeholder to `conf` so that this value can be accessed by
-            # sub-components.
-            conf[field_name] = OVERRIDEN_CONF_VALUE
+            # Set the value on the instance.
+            instance.__component_configured_field_values__[
+                field.name
+            ] = conf_field_value
 
         # Otherwise, raise an appropriate error.
         else:
@@ -482,7 +494,8 @@ def configure(
                     f"has no configured value. Please configure '{full_name}' with "
                     f"one of the following component subclasses of '{field_type_name}':"
                     + "\n    ".join(
-                        [""] + list(type_name_str(c) for c in component_subclasses)
+                        [""]
+                        + list(utils.type_name_str(c) for c in component_subclasses)
                     )
                 )
             raise ValueError(
@@ -490,49 +503,46 @@ def configure(
                 f"'{full_name}' of type '{field_type_name}'."
             )
 
-    # Recursively configure any sub-components.
-    for field_name, field_type in instance.__component_fields__.items():
-        field_value = getattr(instance, field_name)
-        full_name = f"{instance.__component_name__}.{field_name}"
+        # At this point we are certain that this field has has a value, so keep
+        # track of that fact.
+        instance.__component_fields_with_values_in_scope__.add(field.name)
 
-        if (
-            is_component_class(field_value.__class__)
-            and not field_value.__component_configured__
-        ):
+    # Recursively configure any sub-components.
+    for field in instance.__component_fields__.values():
+        if not isinstance(field, ComponentField):
+            continue
+
+        sub_component_instance = getattr(instance, field.name)
+
+        full_name = f"{instance.__component_name__}.{field.name}"
+
+        if not sub_component_instance.__component_configured__:
             # Set the component parent so that inherited fields function
             # correctly.
-            field_value.__component_parent__ = instance
+            sub_component_instance.__component_parent__ = instance
+
+            # Extend the field names in scope. All fields with values defined in
+            # the scope of the parent are also accessible in the child.
+            sub_component_instance.__component_fields_with_values_in_scope__ |= (
+                instance.__component_fields_with_values_in_scope__
+            )
 
             # Configure the nested sub-component. The configuration we use
             # consists of all non-scoped keys and any keys scoped to
-            # `field_name`, where the keys scoped to `field_name` override the
+            # `field.name`, where the keys scoped to `field.name` override the
             # non-scoped keys.
             non_scoped_conf = {a: b for a, b in conf.items() if "." not in a}
             field_name_scoped_conf = {
-                a[len(f"{field_name}.") :]: b
+                a[len(f"{field.name}.") :]: b
                 for a, b in conf.items()
-                if a.startswith(f"{field_name}.")
+                if a.startswith(f"{field.name}.")
             }
             nested_conf = {**non_scoped_conf, **field_name_scoped_conf}
-            configure(field_value, nested_conf, name=full_name, interactive=interactive)
-
-    # Type check all fields.
-    for field_name, field in instance.__component_fields__.items():
-        assert field_name in instance.__component_fields__
-        field_value = getattr(instance, field_name)
-        try:
-            check_type(field_name, field_value, field.annotated_type)
-            # Because boolean `True` and `False` are coercible to ints and
-            # floats, `typeguard.check_type` doesn't throw if we e.g. pass
-            # `True` to a value expecting a float. This would, however, likely
-            # be a user error, so explicitly check for this.
-            if field.annotated_type in [float, int] and isinstance(field_value, bool):
-                raise TypeError
-        except TypeError:
-            raise TypeError(
-                f"Attempting to set field '{instance.__component_name__}.{field_name}' "
-                f"which has annotated type '{type_name_str(field.annotated_type)}' "
-                f"with value '{field_value}'."
-            ) from None
+            configure(
+                sub_component_instance,
+                nested_conf,
+                name=full_name,
+                interactive=interactive,
+            )
 
     instance.__component_configured__ = True

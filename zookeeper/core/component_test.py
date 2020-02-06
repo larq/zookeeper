@@ -2,18 +2,19 @@ import abc
 from typing import List
 from unittest.mock import patch
 
+import click
 import pytest
-from click import unstyle
 
 from zookeeper.core.component import component, configure
+from zookeeper.core.field import ComponentField, Field
 
 
 @pytest.fixture
 def ExampleComponentClass():
     @component
     class A:
-        a: int
-        b: str = "foo"
+        a: int = Field()
+        b: str = Field("foo")
 
     return A
 
@@ -22,9 +23,8 @@ def test_non_class_decorate_error():
     """
     An error should be raised when attempting to decorate a non-class object.
     """
-
     with pytest.raises(
-        ValueError, match="Only classes can be decorated with @component."
+        TypeError, match="Only classes can be decorated with @component."
     ):
 
         @component
@@ -36,9 +36,8 @@ def test_abstract_class_decorate_error():
     """
     An error should be raised when attempting to decorate an abstract class.
     """
-
     with pytest.raises(
-        ValueError, match="Abstract classes cannot be decorated with @component."
+        TypeError, match="Abstract classes cannot be decorated with @component."
     ):
 
         @component
@@ -48,15 +47,14 @@ def test_abstract_class_decorate_error():
                 pass
 
 
-def test_positional_args_init_decorate_error():
+def test_init_decorate_error():
     """
     An error should be raised when attempting to decorate a class with an
-    `__init__` methods that takes positional arguments.
+    `__init__` method.
     """
-
     with pytest.raises(
-        ValueError,
-        match=r"^The `__init__` method of a component must not accept any positional arguments",
+        TypeError,
+        match="Component classes must not define a custom `__init__` method.",
     ):
 
         @component
@@ -64,20 +62,6 @@ def test_positional_args_init_decorate_error():
             def __init__(self, a, b=5):
                 self.a = a
                 self.b = b
-
-
-def test_existing_init():
-    """
-    If the decorated class has an `__init__` method, that method should be
-    called on instantiation.
-    """
-
-    @component
-    class A:
-        def __init__(self, foo="bar"):
-            self.foo = foo
-
-    assert A().foo == "bar"
 
 
 def test_no_init(ExampleComponentClass):
@@ -95,15 +79,19 @@ def test_no_init(ExampleComponentClass):
     assert x.a == 0
     assert x.b == "bar"
 
+    # Verify that arguments are disallowed (the 1 positional argument the error
+    # message refers to is `self`).
     with pytest.raises(
-        TypeError,
-        match=r"__component_init__\(\) takes 1 positional argument but 2 were given",
+        TypeError, match=r"takes 1 positional argument but 2 were given",
     ):
         ExampleComponentClass("foobar")
 
     with pytest.raises(
-        ValueError,
-        match=r"^Argument 'some_other_field_name' does not correspond to any annotated field of",
+        TypeError,
+        match=(
+            "Keyword arguments passed to component `__init__` must correspond to "
+            "component fields. Received non-matching argument 'some_other_field_name'"
+        ),
     ):
         ExampleComponentClass(some_other_field_name=0)
 
@@ -122,20 +110,20 @@ def test_configure_scoped_override_field_values():
 
     @component
     class Child:
-        a: int
-        b: str
-        c: List[float]
+        a: int = Field()
+        b: str = Field()
+        c: List[float] = Field()
 
     @component
     class Parent:
-        b: str = "bar"
-        child: Child = Child()
+        b: str = Field("bar")
+        child: Child = ComponentField(Child)
 
     @component
     class GrandParent:
-        a: int
-        b: str
-        parent: Parent = Parent()
+        a: int = Field()
+        b: str = Field()
+        parent: Parent = ComponentField(Parent)
 
     grand_parent = GrandParent()
 
@@ -189,7 +177,7 @@ def test_configure_automatically_instantiate_subcomponent():
 
     @component
     class Parent:
-        child: AbstractChild
+        child: AbstractChild = ComponentField()
 
     # There is only a single defined component subclass of `AbstractChild`,
     # `Child1`, so we should be able to configure an instance of `Parent` and
@@ -209,7 +197,7 @@ def test_configure_automatically_instantiate_subcomponent():
     p = Parent()
     with pytest.raises(
         ValueError,
-        match="Annotated field 'parent.child' of type 'AbstractChild' has no configured value. Please configure 'parent.child' with one of the following component subclasses",
+        match=r"^Annotated field 'Parent.child' of type 'AbstractChild' has no configured value. Please configure 'Parent.child' with one of the following component subclasses",
     ):
         configure(p, {})
 
@@ -275,7 +263,7 @@ def test_configure_interactive_prompt_for_subcomponent_choice():
 
     @component
     class Parent:
-        child: AbstractChild
+        child: AbstractChild = ComponentField()
 
     # The prompt lists the concrete component subclasses (alphabetically) and
     # asks for an an integer input corresponding to an index in this list.
@@ -303,25 +291,25 @@ def test_str_and_repr():
 
     @component
     class Child:
-        a: int
-        b: str
-        c: List[float]
+        a: int = Field()
+        b: str = Field()
+        c: List[float] = Field()
 
     @component
     class Parent:
-        b: str = "bar"
-        child: Child = Child()
+        b: str = Field("bar")
+        child: Child = ComponentField(Child)
 
     p = Parent()
 
     configure(p, {"a": 10, "b": "foo", "c": [1.5, -1.2]}, name="parent")
 
     assert (
-        unstyle(repr(p))
+        click.unstyle(repr(p))
         == """Parent(b="foo", child=Child(a=10, b="foo", c=[1.5, -1.2]))"""
     )
     assert (
-        unstyle(str(p))
+        click.unstyle(str(p))
         == """Parent(
     b="foo",
     child=Child(
@@ -336,16 +324,25 @@ def test_str_and_repr():
 def test_type_check(ExampleComponentClass):
     """During configuration we should type-check all field values."""
 
-    # Attempting to set an int field with a float.
-    with pytest.raises(
-        TypeError,
-        match=r"^Attempting to set field 'x.a' which has annotated type 'int' with value '4.5'.$",
-    ):
-        configure(ExampleComponentClass(), {"a": 4.5}, name="x")
+    instance = ExampleComponentClass()
 
-    # Attempting to set a str field with a bool.
+    configure(instance, {"a": 4.5}, name="x")
+
+    # Attempting to access the field should now raise a type error.
     with pytest.raises(
         TypeError,
-        match=r"^Attempting to set field 'x.b' which has annotated type 'str' with value 'True'.$",
+        match="Field 'a' of component 'x' is annotated with type '<class 'int'>', which is not satisfied by default value 4.5.",
     ):
-        configure(ExampleComponentClass(), {"a": 3, "b": True}, name="x")
+        instance.a
+
+
+def test_error_if_field_overwritten_in_subclass():
+    @component
+    class SuperClass:
+        foo: str = Field("bar")
+
+    with pytest.raises(ValueError, match="Field 'foo' is defined on super-class"):
+
+        @component
+        class SubClass(SuperClass):
+            foo = 1
