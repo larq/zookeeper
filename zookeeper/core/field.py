@@ -59,7 +59,7 @@ class Field(Generic[C, F]):
             if len(signature.parameters) > 1 or (
                 len(signature.parameters) == 1
                 and list(signature.parameters.values())[0].kind
-                in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD,)
+                in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
             ):
                 raise default_error
 
@@ -123,25 +123,30 @@ class Field(Generic[C, F]):
         self.type = type_annotation
         self._registered = True
 
+    def __repr__(self) -> str:
+        if not self._registered:
+            return f"<Unregistered Field>"
+        return f"<Field '{self.name}' of {self.host_component_class.__name__} with type {self.type}>"
+
     @property
     def has_default(self) -> bool:
         if not self._registered:
             raise ValueError("This field has not been registered to a component.")
         return self._default is not missing
 
-    def get_default(self, component_instance: C) -> F:
+    def get_default(self, instance: C) -> F:
         if not self._registered:
             raise ValueError("This field has not been registered to a component.")
         if not self.has_default:
             raise AttributeError(
                 f"Field '{self.name}' has no default or configured value."
             )
-        if not isinstance(component_instance, self.host_component_class):
+        if not isinstance(instance, self.host_component_class):
             raise TypeError(
                 f"Field '{self.name}' belongs to component "
                 f"'{self.host_component_class.__name__}'; `get_default` must be called "
                 f"with an instance of '{self.host_component_class.__name__}'. Received: "
-                f"{repr(component_instance)}."
+                f"{repr(instance)}."
             )
 
         if not inspect.isfunction(self._default):
@@ -149,8 +154,18 @@ class Field(Generic[C, F]):
 
         params = inspect.signature(self._default).parameters
         if len(params) == 0:
-            return self._default()  # type: ignore
-        return self._default(component_instance)  # type: ignore
+            value = self._default()  # type: ignore
+        else:
+            value = self._default(instance)  # type: ignore
+
+        if utils.is_component_instance(value):
+            raise TypeError(
+                f"Field '{self.name}' of component '{instance.__component_name__}' "
+                "is returning a component instance as its default value. To use "
+                "components in fields, use `ComponentField` rather than `Field`."
+            )
+
+        return value
 
 
 # TODO: Maybe add lower-case alias `field`?

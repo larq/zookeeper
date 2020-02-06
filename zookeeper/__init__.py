@@ -5,6 +5,7 @@ from zookeeper.core import (
     cli,
     component,
     configure,
+    factory,
     task,
 )
 
@@ -13,6 +14,7 @@ __all__ = [
     "ComponentField",
     "component",
     "configure",
+    "factory",
     "Field",
     "PartialComponent",
     "task",

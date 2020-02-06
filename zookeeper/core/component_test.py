@@ -27,7 +27,7 @@ def test_non_class_decorate_error():
         TypeError, match="Only classes can be decorated with @component."
     ):
 
-        @component
+        @component  # type: ignore
         def fn():
             pass
 

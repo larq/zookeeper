@@ -74,7 +74,6 @@ import inspect
 from typing import Any, Dict, List, Optional, Type
 
 from prompt_toolkit import print_formatted_text
-from typeguard import check_type
 
 from zookeeper.core import utils
 from zookeeper.core.field import ComponentField, Field
@@ -96,14 +95,13 @@ except ImportError:  # pragma: no cover
 def _type_check_and_cache(instance, field: Field, result: Any) -> None:
     """A utility method for `_wrap_getattribute`."""
 
-    try:
-        check_type(field.name, result, field.type)
-    except TypeError:
+    if not utils.type_check(result, field.type):
         raise TypeError(
             f"Field '{field.name}' of component '{instance.__component_name__}' is "
             f"annotated with type '{field.type}', which is not satisfied by "
-            f"default value {result}."
-        ) from None
+            f"default value {repr(result)}."
+        )
+
     object.__setattr__(instance, field.name, result)
 
 
@@ -140,7 +138,7 @@ def _wrap_getattribute(component_cls: Type) -> None:
     fn = component_cls.__getattribute__  # type: ignore
 
     @functools.wraps(fn)
-    def wrapped_fn(instance, name):
+    def base_wrapped_fn(instance, name):
         # If this is not an access to a field, return via the wrapped function.
         if name not in fn(instance, "__component_fields__"):
             return fn(instance, name)
@@ -192,7 +190,37 @@ def _wrap_getattribute(component_cls: Type) -> None:
         _type_check_and_cache(instance, field, result)
         return result
 
+    component_cls.__base_getattribute__ = base_wrapped_fn
+
+    # `__base_getattribute__`, defined above, is correct for all values unless
+    # they are @factory instances. If the result is an @factory instance, we
+    # would like `build()` to be implicitly called and the result returned
+    # instead of the actual @factory instance.
+    #
+    # However, internally we would like to still be able to access the @factory
+    # instance, e.g. during configuration of sub-components.
+    #
+    # The solution is for `__base_getattribute__` to *not* call `build()`
+    # implicitly - this function can be used internally. Then we create a
+    # general-purpose `__getattribute__` by wrapping `__base_getattribute__`
+    # once more and inspecting the returned value.
+
+    @functools.wraps(base_wrapped_fn)
+    def wrapped_fn(instance, name):
+        result = base_wrapped_fn(instance, name)
+        if utils.is_factory_instance(result):
+            return result.build()
+        return result
+
     component_cls.__getattribute__ = wrapped_fn
+
+
+# Syntatic sugar around `__base_getattribute__`, similar to `getattr` for
+# calling `__getattribute__` in the standard library.
+def base_getattr(instance, name):
+    if utils.is_component_instance:
+        return instance.__class__.__base_getattribute__(instance, name)
+    return getattr(instance, name)
 
 
 def _wrap_setattr(component_cls: Type) -> None:
@@ -260,9 +288,15 @@ def _field_key_val_str(key: str, value: Any, color: bool, single_line: bool) -> 
 
 
 def __component_repr__(instance):
+    if not instance.__component_configured__:
+        return f"<Unconfigured component '{instance.__component_name__}' instance>"
+
     field_strings = [
         _field_key_val_str(
-            field_name, getattr(instance, field_name), color=False, single_line=True
+            field_name,
+            base_getattr(instance, field_name),
+            color=False,
+            single_line=True,
         )
         for field_name in instance.__component_fields__.keys()
     ]
@@ -273,9 +307,15 @@ def __component_repr__(instance):
 
 
 def __component_str__(instance):
+    if not instance.__component_configured__:
+        return f"<Unconfigured component '{instance.__component_name__}' instance>"
+
     field_strings = [
         _field_key_val_str(
-            field_name, getattr(instance, field_name), color=True, single_line=False
+            field_name,
+            base_getattr(instance, field_name),
+            color=True,
+            single_line=False,
         )
         for field_name in instance.__component_fields__.keys()
     ]
@@ -325,7 +365,7 @@ def __component_init__(instance, **kwargs):
 ######################
 
 
-def component(cls):
+def component(cls: Type):
     """A decorater which turns a class into a Zookeeper component."""
 
     if not inspect.isclass(cls):
@@ -429,6 +469,10 @@ def configure(
             conf_field_value = conf[field.name]
             # The configuration value could be a string specifying a component
             # class to instantiate.
+
+            # TODO: support @factory components here, so that they can be
+            #       specified via the CLI.
+
             if len(component_subclasses) > 0 and isinstance(conf_field_value, str):
                 for subclass in component_subclasses:
                     if (
@@ -512,7 +556,7 @@ def configure(
         if not isinstance(field, ComponentField):
             continue
 
-        sub_component_instance = getattr(instance, field.name)
+        sub_component_instance = base_getattr(instance, field.name)
 
         full_name = f"{instance.__component_name__}.{field.name}"
 

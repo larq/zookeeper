@@ -3,6 +3,7 @@ import re
 from ast import literal_eval
 from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
+import typeguard
 from prompt_toolkit import print_formatted_text, prompt
 
 
@@ -15,6 +16,14 @@ def is_component_class(cls: Type) -> bool:
 
 def is_component_instance(instance: Any) -> bool:
     return is_component_class(instance.__class__)
+
+
+def is_factory_class(cls: Type) -> bool:
+    return is_component_class(cls) and hasattr(cls, "__component_factory_return_type__")
+
+
+def is_factory_instance(instance: Any) -> bool:
+    return is_factory_class(instance.__class__)
 
 
 def generate_subclasses(cls: Type) -> Iterator[Type]:
@@ -50,6 +59,31 @@ def generate_component_ancestors_with_field(
         if field_name in parent.__component_fields__:
             yield parent
         parent = parent.__component_parent__
+
+
+def type_check(value, expected_type) -> bool:
+    """Can raise a `RuntimeError` if `value` is an @factory instance."""
+
+    if is_factory_instance(value):
+        # If `value` is a @factory instance, what's relevant is the return type
+        # of the `build()` method: we want to check if the return type is a
+        # sub-type of the expected type.
+        if inspect.isclass(value.__component_factory_return_type__) and inspect.isclass(
+            expected_type
+        ):
+            # If they are both classes, this is easy...
+            return issubclass(value.__component_factory_return_type__, expected_type)
+        # ..but in the general case we can't check sub-type relationships, so
+        # have to throw. Consumers should catch this error.
+        raise RuntimeError()
+    try:
+        # typeguard.check_type requires a name as the first argument for their
+        # error message, but we want to catch their error so we can pass an
+        # empty string.
+        typeguard.check_type("", value, expected_type)
+    except TypeError:
+        return False
+    return True
 
 
 T = TypeVar("T")

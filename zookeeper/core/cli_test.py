@@ -75,3 +75,6 @@ def test_boolean_flag_syntax():
     result = runner.invoke(cli, ["test_task", "a=5", "--no-c"])
     assert result.exit_code == 0
     assert result.output == "5 foo False\n"
+
+
+# TODO: add tests for specifying @factory components through the CLI.

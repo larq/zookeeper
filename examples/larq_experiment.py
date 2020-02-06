@@ -6,8 +6,8 @@ from typing import Sequence, Tuple, Union
 import larq as lq
 import tensorflow as tf
 
-from zookeeper import ComponentField, Field, cli, component, task
-from zookeeper.tf import Dataset, Experiment, Model, Preprocessing, TFDSDataset
+from zookeeper import ComponentField, Field, cli, component, factory, task
+from zookeeper.tf import Dataset, Experiment, Preprocessing, TFDSDataset
 
 
 @component
@@ -37,8 +37,8 @@ class PadCropAndFlip(Preprocessing):
         return data["label"]
 
 
-@component
-class BinaryNet(Model):
+@factory
+class BinaryNet:
     dataset: Dataset = ComponentField()
     preprocessing: Preprocessing = ComponentField()
 
@@ -46,7 +46,9 @@ class BinaryNet(Model):
     dense_units: int = Field(1024)
     kernel_size: Union[int, Tuple[int, int]] = Field((3, 3))
 
-    def build(self, input_shape):
+    input_shape: Tuple[int, int, int] = Field()
+
+    def build(self) -> tf.keras.models.Model:
         kwhparams = dict(
             input_quantizer="ste_sign",
             kernel_quantizer="ste_sign",
@@ -63,7 +65,7 @@ class BinaryNet(Model):
                     kernel_quantizer="ste_sign",
                     kernel_constraint="weight_clip",
                     use_bias=False,
-                    input_shape=input_shape,
+                    input_shape=self.input_shape,
                 ),
                 tf.keras.layers.BatchNormalization(scale=False),
                 lq.layers.QuantConv2D(
@@ -104,8 +106,9 @@ class BinaryNet(Model):
 @task
 class BinaryNetMnist(Experiment):
     dataset = ComponentField(Mnist)
-    preprocessing = ComponentField(PadCropAndFlip, pad_size=32, input_shape=(28, 28, 1))
-    model = ComponentField(BinaryNet)
+    input_shape: Tuple[int, int, int] = Field((28, 28, 1))
+    preprocessing = ComponentField(PadCropAndFlip, pad_size=32)
+    model: tf.keras.models.Model = ComponentField(BinaryNet)
 
     epochs = Field(100)
     batch_size = Field(128)
@@ -135,13 +138,13 @@ class BinaryNetMnist(Experiment):
             .batch(self.batch_size)
         )
 
-        model = self.model.build(input_shape=self.preprocessing.input_shape)
+        self.model.compile(
+            optimizer=self.optimizer, loss=self.loss, metrics=self.metrics
+        )
 
-        model.compile(optimizer=self.optimizer, loss=self.loss, metrics=self.metrics)
+        lq.models.summary(self.model)
 
-        lq.models.summary(model)
-
-        model.fit(
+        self.model.fit(
             train_data,
             epochs=self.epochs,
             steps_per_epoch=num_train_examples // self.batch_size,
