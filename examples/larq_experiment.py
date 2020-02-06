@@ -104,19 +104,15 @@ class BinaryNet(Model):
 @task
 class BinaryNetMnist(Experiment):
     dataset = ComponentField(Mnist)
-    preprocessing = ComponentField(
-        PadCropAndFlip, pad_size=32, input_shape=lambda: (28, 28, 1)
-    )
+    preprocessing = ComponentField(PadCropAndFlip, pad_size=32, input_shape=(28, 28, 1))
     model = ComponentField(BinaryNet)
 
     epochs = Field(100)
     batch_size = Field(128)
+    learning_rate: float = Field(5e-3)
 
     loss = Field("sparse_categorical_crossentropy")
-
     metrics: Sequence[str] = Field(lambda: ["accuracy"])
-
-    learning_rate: float = Field(5e-3)
 
     @Field
     def optimizer(self):
