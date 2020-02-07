@@ -1,5 +1,5 @@
 import abc
-from typing import List
+from typing import List, Optional
 from unittest.mock import patch
 
 import click
@@ -346,3 +346,13 @@ def test_error_if_field_overwritten_in_subclass():
         @component
         class SubClass(SuperClass):
             foo = 1
+
+
+def test_component_field_optional_type_check():
+    class A:
+        pass
+
+    # This should not raise an error:
+    @component
+    class B:
+        foo: Optional[A] = ComponentField(None)
