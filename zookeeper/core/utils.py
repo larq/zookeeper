@@ -157,7 +157,7 @@ def prompt_for_value(field_name: str, field_type) -> Any:
 
 
 def prompt_for_component_subclass(component_name: str, classes: Sequence[Type]) -> Type:
-    """Prompt the user to choose a compnent subclass from `classes`."""
+    """Prompt the user to choose a component subclass from `classes`."""
 
     print_formatted_text(f"No instance found for nested component '{component_name}'.")
     choices = {cls.__qualname__: cls for cls in classes}

@@ -197,7 +197,7 @@ def test_configure_automatically_instantiate_subcomponent():
     p = Parent()
     with pytest.raises(
         ValueError,
-        match=r"^Annotated field 'Parent.child' of type 'AbstractChild' has no configured value. Please configure 'Parent.child' with one of the following component subclasses",
+        match=r"^Component field 'Parent.child' of type 'AbstractChild' has no default or configured class.",
     ):
         configure(p, {})
 

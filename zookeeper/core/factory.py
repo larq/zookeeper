@@ -1,9 +1,10 @@
 import functools
 import inspect
-from typing import Dict, Set, Type
+from typing import Type
 
 from zookeeper.core import utils
 from zookeeper.core.component import component
+from zookeeper.core.factory_registry import FACTORY_REGISTRY
 
 
 # A sentinel class/object for missing default values.
@@ -13,9 +14,6 @@ class Missing:
 
 
 missing = Missing()
-
-
-_FACTORY_REGISTRY: Dict[Type, Set] = {}
 
 
 def _wrap_build(factory_cls: Type) -> None:
@@ -33,7 +31,7 @@ def _wrap_build(factory_cls: Type) -> None:
                 result, factory_cls.__component_factory_return_type__
             ):
                 raise TypeError(
-                    f"@factory '{factory_cls}' has a `build()` method is annotated with "
+                    f"@factory '{factory_cls}' has a `build()` method annotated with "
                     f"return type {factory_cls.__component_factory_return_type__}, "
                     f"which is not satisfied by the return value {result}."
                 )
@@ -61,7 +59,7 @@ def factory(cls: Type):
             raise TypeError()
     except (AttributeError, TypeError):
         raise TypeError(
-            "Classes decorated with @factory must implement a build method taking "
+            "Classes decorated with @factory must implement a `build()` method taking "
             "precisely one positional argument, `self`."
         ) from None
 
@@ -84,9 +82,9 @@ def factory(cls: Type):
 
     _wrap_build(cls)
 
-    if signature.return_annotation not in _FACTORY_REGISTRY:
-        _FACTORY_REGISTRY[signature.return_annotation] = set([cls])
+    if signature.return_annotation not in FACTORY_REGISTRY:
+        FACTORY_REGISTRY[signature.return_annotation] = set([cls])
     else:
-        _FACTORY_REGISTRY[signature.return_annotation].add(cls)
+        FACTORY_REGISTRY[signature.return_annotation].add(cls)
 
     return cls

@@ -1,12 +1,12 @@
 import pytest
 
-from zookeeper.core.factory import _FACTORY_REGISTRY, factory
+from zookeeper.core.factory import FACTORY_REGISTRY, factory
 
 
 def test_no_build_method():
     with pytest.raises(
         TypeError,
-        match="Classes decorated with @factory must implement a build method taking precisely one positional argument",
+        match=r"Classes decorated with @factory must implement a `build\(\)` method taking precisely one positional argument",
     ):
 
         @factory
@@ -17,7 +17,7 @@ def test_no_build_method():
 def test_too_many_build_args():
     with pytest.raises(
         TypeError,
-        match="Classes decorated with @factory must implement a build method taking precisely one positional argument",
+        match=r"Classes decorated with @factory must implement a `build\(\)` method taking precisely one positional argument",
     ):
 
         @factory
@@ -47,7 +47,7 @@ def test_class_added_to_registry():
         def build(self) -> AbstractType:
             return AbstractType()
 
-    assert A in _FACTORY_REGISTRY.get(AbstractType, set())
+    assert A in FACTORY_REGISTRY.get(AbstractType, set())
 
 
 # TODO: test wrapped `build()` function.
