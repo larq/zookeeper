@@ -2,7 +2,9 @@ import pytest
 from click import testing
 
 from zookeeper.core.cli import cli
-from zookeeper.core.field import Field
+from zookeeper.core.component import component
+from zookeeper.core.factory import factory
+from zookeeper.core.field import ComponentField, Field
 from zookeeper.core.task import task
 
 
