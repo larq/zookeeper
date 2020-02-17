@@ -41,7 +41,22 @@ def _wrap_build(factory_cls: Type) -> None:
     factory_cls.build = wrapped_fn
 
 
-# TODO: pretty `str` and `repr`
+def _wrap_str_repr(factory_cls: Type) -> None:
+    str_fn = factory_cls.__str__
+    repr_fn = factory_cls.__repr__
+
+    @functools.wraps(str_fn)
+    def wrapped_str(factory_instance):
+        result = str_fn(factory_instance)
+        return result.replace("<Unconfigured component ", "<Unconfigured factory ")
+
+    @functools.wraps(repr_fn)
+    def wrapped_repr(factory_instance):
+        result = repr_fn(factory_instance)
+        return result.replace("<Unconfigured component ", "<Unconfigured factory ")
+
+    factory_cls.__str__ = wrapped_str
+    factory_cls.__repr__ = wrapped_repr
 
 
 def factory(cls: Type):
@@ -81,6 +96,7 @@ def factory(cls: Type):
     cls.__component_factory_value__ = missing
 
     _wrap_build(cls)
+    _wrap_str_repr(cls)
 
     if signature.return_annotation not in FACTORY_REGISTRY:
         FACTORY_REGISTRY[signature.return_annotation] = set([cls])
