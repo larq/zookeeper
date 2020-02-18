@@ -3,8 +3,13 @@ import re
 from ast import literal_eval
 from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
+import click
 import typeguard
 from prompt_toolkit import print_formatted_text, prompt
+
+
+def warn(message: str) -> None:
+    click.secho(f"WARNING: {message}", fg="yellow")
 
 
 def is_component_class(cls: Type) -> bool:

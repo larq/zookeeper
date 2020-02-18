@@ -73,8 +73,6 @@ import functools
 import inspect
 from typing import Any, Dict, List, Optional, Type
 
-from prompt_toolkit import print_formatted_text
-
 from zookeeper.core import utils
 from zookeeper.core.factory_registry import FACTORY_REGISTRY
 from zookeeper.core.field import ComponentField, Field
@@ -397,9 +395,7 @@ def component(cls: Type):
                 fields[name] = value
 
     if len(fields) == 0:
-        utils.print_formatted_text(
-            f"WARNING: Component {cls.__name__} has no defined fields."
-        )
+        utils.warn(f"Component {cls.__name__} has no defined fields.")
 
     # Throw an error if there is a field defined on a superclass that has been
     # overriden with a non-Field value.
@@ -506,10 +502,10 @@ def configure(
         # instantiate and use an instance automatically.
         elif isinstance(field, ComponentField) and len(component_subclasses) == 1:
             component_cls = list(component_subclasses)[0]
-            print_formatted_text(
+            utils.warn(
                 f"'{utils.type_name_str(component_cls)}' is the only concrete component "
                 f"class that satisfies the type of the annotated field '{full_name}'. "
-                "Using an instance of this class by default."
+                "Using an instance of this class by default.",
             )
             # This is safe because we don't allow custom `__init__` methods.
             conf_field_value = component_cls()
