@@ -586,6 +586,42 @@ def configure(
         # track of that fact.
         instance.__component_fields_with_values_in_scope__.add(field.name)
 
+    # Check that all `conf` values are being used, and throw if we've been
+    # passed an un-used option.
+    for key in conf:
+        error = ValueError(
+            f"Key '{key}' does not correspond to any field of component "
+            f"'{instance.__component_name__}'."
+            "\n\n"
+            "If you have nested components as follows:\n\n"
+            "```\n"
+            "@component\n"
+            "class ChildComponent:\n"
+            "    a: int = Field(0)\n"
+            "\n"
+            "@task\n"
+            "class SomeTask:\n"
+            "    child: ChildComponent = ComponentField(ChildComponent)\n"
+            "    def run(self):\n"
+            "        print(self.child.a)\n"
+            "```\n\n"
+            "then trying to configure `a=<SOME_VALUE>` will fail. You instead need to "
+            "fully qualify the key name, and configure the value with "
+            "`child.a=<SOME_VALUE>`."
+        )
+
+        if "." in key:
+            scoped_component_name = key.split(".")[0]
+            if not (
+                scoped_component_name in instance.__component_fields__
+                and isinstance(
+                    instance.__component_fields__[scoped_component_name], ComponentField
+                )
+            ):
+                raise error
+        elif key not in instance.__component_fields__:
+            raise error
+
     # Recursively configure any sub-components.
     for field in instance.__component_fields__.values():
         if not isinstance(field, ComponentField):
