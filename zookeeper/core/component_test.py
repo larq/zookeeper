@@ -409,3 +409,39 @@ def test_component_field_factory_type_check(capsys):
         captured.err
         == "WARNING: Unable to check that typing.Tuple[int, int, int] is a sub-type of typing.Tuple[float, float, float].\n"
     )
+
+
+def test_component_post_configure():
+    with pytest.raises(
+        TypeError,
+        match="The `__post_configure__` attribute of a @component class must be a method.",
+    ):
+
+        @component
+        class A:
+            __post_configure__ = 3.14
+
+    with pytest.raises(
+        TypeError,
+        match="The `__post_configure__` method of a @component class must take no arguments except `self`",
+    ):
+
+        @component
+        class B:
+            def __post_configure__(self, x):
+                pass
+
+    # This definition should succeed.
+    @component
+    class C:
+        a: int = Field(0)
+        b: float = Field(3.14)
+
+        def __post_configure__(self):
+            self.c = self.a + self.b
+
+    c = C()
+
+    configure(c, {"a": 1, "b": -3.14})
+
+    assert c.c == 1 - 3.14
