@@ -60,6 +60,38 @@ def _wrap_str_repr(factory_cls: Type) -> None:
 
 
 def factory(cls: Type):
+    """
+    A decorator which turns a class into a Zookeeper factory.
+
+    Factories are in particular Zookeeper components, so can have `Field`s and
+    `ComponentFields`. Factories must define an argument-less `build()` method,
+    with a return type annotation.
+
+    When a factory component is used as a sub-component (i.e., configured as the
+    value of a `ComponentField` in some parent component instance), the
+    `build()` method is implicitly called upon the first access of the field
+    value, and the result of `build()` is used as the value in the parent.
+
+    Here is an example:
+
+    ```
+    @factory
+    class F:
+        a: int = Field()
+        def build(self):
+            return self.a + 4
+
+    @component
+    class C:
+        a: int = Field(3)
+        f: int = ComponentField(F)
+
+    print(C().f)
+
+    >> # Output
+    >> 7
+    ```
+    """
     cls = component(cls)
 
     try:

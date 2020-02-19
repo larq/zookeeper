@@ -365,7 +365,7 @@ def __component_init__(instance, **kwargs):
 
 
 def component(cls: Type):
-    """A decorater which turns a class into a Zookeeper component."""
+    """A decorator which turns a class into a Zookeeper component."""
 
     if not inspect.isclass(cls):
         raise TypeError("Only classes can be decorated with @component.")
