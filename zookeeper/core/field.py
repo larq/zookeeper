@@ -4,16 +4,6 @@ from typing import Callable, Generic, Type, TypeVar, Union
 from zookeeper.core import utils
 from zookeeper.core.partial_component import PartialComponent
 
-
-# A sentinel class/object for missing default values.
-class Missing:
-    def __repr__(self):
-        return f"<missing>"
-
-
-missing = Missing()
-
-
 # Type-variables to parameterise fields. `C` is the type of the component the
 # field is attached to, and `F` is the type the field is annotated with.
 C = TypeVar("C")
@@ -33,7 +23,10 @@ class Field(Generic[C, F]):
     """
 
     def __init__(
-        self, default: Union[Missing, F, Callable[[], F], Callable[[C], F]] = missing,
+        self,
+        default: Union[
+            utils.Missing, F, Callable[[], F], Callable[[C], F]
+        ] = utils.missing,
     ):
         # Define here once to avoid having to define twice below.
         default_error = TypeError(
@@ -50,7 +43,7 @@ class Field(Generic[C, F]):
         self._registered = False
         self._return_annotation = inspect.Signature.empty
 
-        if default is missing or utils.is_immutable(default):
+        if default is utils.missing or utils.is_immutable(default):
             self._default = default
             return
 
@@ -79,7 +72,7 @@ class Field(Generic[C, F]):
         if name.startswith("_"):
             raise ValueError("Field names cannot start with underscores.")
 
-        type_annotation = missing
+        type_annotation = utils.missing
         for super_class in inspect.getmro(host_component_class):
             if name in getattr(super_class, "__annotations__", {}):
                 type_annotation = super_class.__annotations__[name]
@@ -87,7 +80,7 @@ class Field(Generic[C, F]):
 
         if (
             self._return_annotation is not inspect.Signature.empty
-            and type_annotation != missing
+            and type_annotation != utils.missing
             and type_annotation != self._return_annotation
         ):
             raise TypeError(
@@ -95,7 +88,7 @@ class Field(Generic[C, F]):
                 f"{type_annotation} and {self._return_annotation}."
             )
 
-        if type_annotation is missing:
+        if type_annotation is utils.missing:
             if self._return_annotation is inspect.Signature.empty:
                 raise TypeError(
                     "Fields must be defined inside the component class definition, "
@@ -126,13 +119,16 @@ class Field(Generic[C, F]):
     def __repr__(self) -> str:
         if not self._registered:
             return f"<Unregistered Field>"
-        return f"<Field '{self.name}' of {self.host_component_class.__name__} with type {self.type}>"
+        return (
+            f"<Field '{self.name}' of {self.host_component_class.__name__} with type "
+            f"{self.type}>"
+        )
 
     @property
     def has_default(self) -> bool:
         if not self._registered:
             raise ValueError("This field has not been registered to a component.")
-        return self._default is not missing
+        return self._default is not utils.missing
 
     def get_default(self, instance: C) -> F:
         if not self._registered:
@@ -186,9 +182,11 @@ class ComponentField(Field, Generic[C, F]):
     """
 
     def __init__(
-        self, default: Union[Missing, F, PartialComponent[F]] = missing, **kwargs,
+        self,
+        default: Union[utils.Missing, F, PartialComponent[F]] = utils.missing,
+        **kwargs,
     ):
-        if default in (missing, None):
+        if default in (utils.missing, None):
             if len(kwargs) > 0:
                 raise TypeError(
                     "Keyword arguments can only be passed to `ComponentField` if "
@@ -208,9 +206,9 @@ class ComponentField(Field, Generic[C, F]):
                 "class or a `PartialComponent`."
             )
 
-        self.name = missing
-        self.host_component_class = missing
-        self.type = missing
+        self.name = utils.missing
+        self.host_component_class = utils.missing
+        self.type = utils.missing
         self._registered = False
         self._default = default
 
@@ -219,12 +217,12 @@ class ComponentField(Field, Generic[C, F]):
             raise ValueError("This field has already been registered to a component.")
         if name.startswith("_"):
             raise ValueError("Field names cannot start with underscores.")
-        type_annotation = missing
+        type_annotation = utils.missing
         for super_class in inspect.getmro(host_component_class):
             if name in getattr(super_class, "__annotations__", {}):
                 type_annotation = super_class.__annotations__[name]
                 break
-        if type_annotation is missing:
+        if type_annotation is utils.missing:
             raise TypeError(
                 "ComponentFields must be defined inside the component class definition, "
                 "with a type-annotation as follows:\n\n"

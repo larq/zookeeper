@@ -8,6 +8,15 @@ import typeguard
 from prompt_toolkit import print_formatted_text, prompt
 
 
+# A sentinel class/object for missing default values.
+class Missing:
+    def __repr__(self):
+        return f"<missing>"
+
+
+missing = Missing()
+
+
 def warn(message: str) -> None:
     click.secho(f"WARNING: {message}", fg="yellow", err=True)
 

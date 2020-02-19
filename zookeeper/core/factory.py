@@ -7,15 +7,6 @@ from zookeeper.core.component import component
 from zookeeper.core.factory_registry import FACTORY_REGISTRY
 
 
-# A sentinel class/object for missing default values.
-class Missing:
-    def __repr__(self):
-        return f"<missing>"
-
-
-missing = Missing()
-
-
 def _wrap_build(factory_cls: Type) -> None:
     """
     Every @factory has a `build()` method, which we wrap so that `build()` is
@@ -25,7 +16,7 @@ def _wrap_build(factory_cls: Type) -> None:
 
     @functools.wraps(fn)
     def wrapped_fn(factory_instance):
-        if factory_instance.__component_factory_value__ is missing:
+        if factory_instance.__component_factory_value__ is utils.missing:
             result = fn(factory_instance)
             if not utils.type_check(
                 result, factory_cls.__component_factory_return_type__
@@ -125,7 +116,7 @@ def factory(cls: Type):
         )
 
     cls.__component_factory_return_type__ = signature.return_annotation
-    cls.__component_factory_value__ = missing
+    cls.__component_factory_value__ = utils.missing
 
     _wrap_build(cls)
     _wrap_str_repr(cls)
