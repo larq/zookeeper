@@ -31,12 +31,12 @@ class A:
 
 @component
 class B:
-    a: A = Field()
+    a: A = ComponentField()
     y: str = Field("foo")
 
 @component
 class C:
-    b: B = Field()
+    b: B = ComponentField()
     x: int = Field()
     z: float = Field(3.14)
 
@@ -48,7 +48,7 @@ configure(
         "b.x": 10,                  # (2)
         "b.a.x": 15,                # (3)
 
-        "b.y": "foo",               # (4)
+        "b.y": "bar",               # (4)
 
         "b.z": 2.71                 # (5)
     }
@@ -61,7 +61,7 @@ print(c)
                 x = 15,             # (3) overrides (2) overrides (1)
                 z = 2.71            # Inherits from parent: (5)
             ),
-            y = "foo"               # (4) overrides the default
+            y = "bar"               # (4) overrides the default
         ),
         x = 5,                      # Only (1) applies
         z = 3.14                    # The default is taken
