@@ -72,18 +72,19 @@ def type_check(value, expected_type) -> bool:
         # If `value` is a @factory instance, what's relevant is the return type
         # of the `build()` method: we want to check if the return type is a
         # sub-type of the expected type.
-        if inspect.isclass(value.__component_factory_return_type__) and inspect.isclass(
-            expected_type
-        ):
+        try:
             # If they are both classes, this is easy...
             return issubclass(value.__component_factory_return_type__, expected_type)
-        # ..but in the general case we can't check sub-type relationships, so
-        # have to print a warning and conservatively return `True`.
-        warn(
-            f"Unable to check that {value.__component_factory_return_type__} is a "
-            f"sub-type of {expected_type}."
-        )
-        return True
+        except TypeError:
+            # ...but in general this might fail (`issubclass` can't be used with
+            # subscripted generics in Python 3.7, or with any type from the
+            # `typing` module in Python 3.6). If the check fails we should print
+            # a warning and conservatively return `True`.
+            warn(
+                f"Unable to check that {value.__component_factory_return_type__} is a "
+                f"sub-type of {expected_type}."
+            )
+            return True
     try:
         # typeguard.check_type requires a name as the first argument for their
         # error message, but we want to catch their error so we can pass an
