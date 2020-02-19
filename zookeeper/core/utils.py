@@ -9,7 +9,7 @@ from prompt_toolkit import print_formatted_text, prompt
 
 
 def warn(message: str) -> None:
-    click.secho(f"WARNING: {message}", fg="yellow")
+    click.secho(f"WARNING: {message}", fg="yellow", err=True)
 
 
 def is_component_class(cls: Type) -> bool:
@@ -67,8 +67,7 @@ def generate_component_ancestors_with_field(
 
 
 def type_check(value, expected_type) -> bool:
-    """Can raise a `RuntimeError` if `value` is an @factory instance."""
-
+    """Check that the `value` satisfies type `expected_type`."""
     if is_factory_instance(value):
         # If `value` is a @factory instance, what's relevant is the return type
         # of the `build()` method: we want to check if the return type is a
@@ -79,8 +78,12 @@ def type_check(value, expected_type) -> bool:
             # If they are both classes, this is easy...
             return issubclass(value.__component_factory_return_type__, expected_type)
         # ..but in the general case we can't check sub-type relationships, so
-        # have to throw. Consumers should catch this error.
-        raise RuntimeError()
+        # have to print a warning and conservatively return `True`.
+        warn(
+            f"Unable to check that {value.__component_factory_return_type__} is a "
+            f"sub-type of {expected_type}."
+        )
+        return True
     try:
         # typeguard.check_type requires a name as the first argument for their
         # error message, but we want to catch their error so we can pass an

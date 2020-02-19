@@ -1,11 +1,12 @@
 import abc
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from unittest.mock import patch
 
 import click
 import pytest
 
 from zookeeper.core.component import component, configure
+from zookeeper.core.factory import factory
 from zookeeper.core.field import ComponentField, Field
 
 
@@ -352,7 +353,59 @@ def test_component_field_optional_type_check():
     class A:
         pass
 
-    # This should not raise an error:
     @component
     class B:
         foo: Optional[A] = ComponentField(None)
+
+    # This should not raise an error.
+    B.foo
+
+
+def test_component_field_factory_type_check(capsys):
+    class Base:
+        pass
+
+    class Concrete(Base):
+        pass
+
+    @factory
+    class F1:
+        def build(self) -> Base:
+            return Concrete()
+
+    @factory
+    class F2:
+        def build(self) -> Concrete:
+            return Concrete()
+
+    @factory
+    class F3:
+        def build(self) -> Tuple[int, int, int]:
+            return (1, 2, 3)
+
+    @component
+    class A1:
+        base: Base = ComponentField(F1)
+
+    @component
+    class A2:
+        base: Base = ComponentField(F2)
+
+    @component
+    class A3:
+        base: Tuple[float, float, float] = ComponentField(F3)
+
+    # These should succeed.
+    A1().base
+    A2().base
+
+    # Do this here to drop any already captured output.
+    capsys.readouterr()
+
+    # This should succeed, but without a type-check (should print a warning)
+    A3().base
+    captured = capsys.readouterr()
+    assert (
+        captured.err
+        == "WARNING: Unable to check that typing.Tuple[int, int, int] is a sub-type of typing.Tuple[float, float, float].\n"
+    )
