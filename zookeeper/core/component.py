@@ -31,12 +31,12 @@ class A:
 
 @component
 class B:
-    a: A = Field()
+    a: A = ComponentField()
     y: str = Field("foo")
 
 @component
 class C:
-    b: B = Field()
+    b: B = ComponentField()
     x: int = Field()
     z: float = Field(3.14)
 
@@ -48,7 +48,7 @@ configure(
         "b.x": 10,                  # (2)
         "b.a.x": 15,                # (3)
 
-        "b.y": "foo",               # (4)
+        "b.y": "bar",               # (4)
 
         "b.z": 2.71                 # (5)
     }
@@ -61,7 +61,7 @@ print(c)
                 x = 15,             # (3) overrides (2) overrides (1)
                 z = 2.71            # Inherits from parent: (5)
             ),
-            y = "foo"               # (4) overrides the default
+            y = "bar"               # (4) overrides the default
         ),
         x = 5,                      # Only (1) applies
         z = 3.14                    # The default is taken
@@ -73,10 +73,8 @@ import functools
 import inspect
 from typing import Any, Dict, List, Optional, Type
 
-from prompt_toolkit import print_formatted_text
-from typeguard import check_type
-
 from zookeeper.core import utils
+from zookeeper.core.factory_registry import FACTORY_REGISTRY
 from zookeeper.core.field import ComponentField, Field
 
 try:  # pragma: no cover
@@ -96,14 +94,13 @@ except ImportError:  # pragma: no cover
 def _type_check_and_cache(instance, field: Field, result: Any) -> None:
     """A utility method for `_wrap_getattribute`."""
 
-    try:
-        check_type(field.name, result, field.type)
-    except TypeError:
+    if not utils.type_check(result, field.type):
         raise TypeError(
             f"Field '{field.name}' of component '{instance.__component_name__}' is "
             f"annotated with type '{field.type}', which is not satisfied by "
-            f"default value {result}."
-        ) from None
+            f"default value {repr(result)}."
+        )
+
     object.__setattr__(instance, field.name, result)
 
 
@@ -140,7 +137,7 @@ def _wrap_getattribute(component_cls: Type) -> None:
     fn = component_cls.__getattribute__  # type: ignore
 
     @functools.wraps(fn)
-    def wrapped_fn(instance, name):
+    def base_wrapped_fn(instance, name):
         # If this is not an access to a field, return via the wrapped function.
         if name not in fn(instance, "__component_fields__"):
             return fn(instance, name)
@@ -192,7 +189,37 @@ def _wrap_getattribute(component_cls: Type) -> None:
         _type_check_and_cache(instance, field, result)
         return result
 
+    component_cls.__base_getattribute__ = base_wrapped_fn
+
+    # `__base_getattribute__`, defined above, is correct for all values unless
+    # they are @factory instances. If the result is an @factory instance, we
+    # would like `build()` to be implicitly called and the result returned
+    # instead of the actual @factory instance.
+    #
+    # However, internally we would like to still be able to access the @factory
+    # instance, e.g. during configuration of sub-components.
+    #
+    # The solution is for `__base_getattribute__` to *not* call `build()`
+    # implicitly - this function can be used internally. Then we create a
+    # general-purpose `__getattribute__` by wrapping `__base_getattribute__`
+    # once more and inspecting the returned value.
+
+    @functools.wraps(base_wrapped_fn)
+    def wrapped_fn(instance, name):
+        result = base_wrapped_fn(instance, name)
+        if utils.is_factory_instance(result):
+            return result.build()
+        return result
+
     component_cls.__getattribute__ = wrapped_fn
+
+
+# Syntatic sugar around `__base_getattribute__`, similar to `getattr` for
+# calling `__getattribute__` in the standard library.
+def base_getattr(instance, name):
+    if utils.is_component_instance:
+        return instance.__class__.__base_getattribute__(instance, name)
+    return getattr(instance, name)
 
 
 def _wrap_setattr(component_cls: Type) -> None:
@@ -260,9 +287,15 @@ def _field_key_val_str(key: str, value: Any, color: bool, single_line: bool) -> 
 
 
 def __component_repr__(instance):
+    if not instance.__component_configured__:
+        return f"<Unconfigured component '{instance.__component_name__}' instance>"
+
     field_strings = [
         _field_key_val_str(
-            field_name, getattr(instance, field_name), color=False, single_line=True
+            field_name,
+            base_getattr(instance, field_name),
+            color=False,
+            single_line=True,
         )
         for field_name in instance.__component_fields__.keys()
     ]
@@ -273,9 +306,15 @@ def __component_repr__(instance):
 
 
 def __component_str__(instance):
+    if not instance.__component_configured__:
+        return f"<Unconfigured component '{instance.__component_name__}' instance>"
+
     field_strings = [
         _field_key_val_str(
-            field_name, getattr(instance, field_name), color=True, single_line=False
+            field_name,
+            base_getattr(instance, field_name),
+            color=True,
+            single_line=False,
         )
         for field_name in instance.__component_fields__.keys()
     ]
@@ -325,8 +364,8 @@ def __component_init__(instance, **kwargs):
 ######################
 
 
-def component(cls):
-    """A decorater which turns a class into a Zookeeper component."""
+def component(cls: Type):
+    """A decorator which turns a class into a Zookeeper component."""
 
     if not inspect.isclass(cls):
         raise TypeError("Only classes can be decorated with @component.")
@@ -356,9 +395,7 @@ def component(cls):
                 fields[name] = value
 
     if len(fields) == 0:
-        utils.print_formatted_text(
-            f"WARNING: Component {cls.__name__} has no defined fields."
-        )
+        utils.warn(f"Component {cls.__name__} has no defined fields.")
 
     # Throw an error if there is a field defined on a superclass that has been
     # overriden with a non-Field value.
@@ -407,7 +444,6 @@ def configure(
     overwrite any values already set on the instance - either class defaults
     or those set in `__init__`.
     """
-
     # Configuration can only happen once.
     if instance.__component_configured__:
         raise ValueError(
@@ -423,22 +459,31 @@ def configure(
         field_type_name = (
             field.type.__name__ if inspect.isclass(field.type) else str(field.type)
         )
-        component_subclasses = list(utils.generate_component_subclasses(field.type))
+
+        if isinstance(field, ComponentField):
+            # Create a list of all component subclasses of the field type, and
+            # add to the list all factory classes which can build the type (or
+            # any subclass of the type).
+            component_subclasses = list(utils.generate_component_subclasses(field.type))
+            for type_subclass in utils.generate_subclasses(field.type):
+                component_subclasses.extend(FACTORY_REGISTRY.get(type_subclass, []))
 
         if field.name in conf:
             conf_field_value = conf[field.name]
-            # The configuration value could be a string specifying a component
-            # class to instantiate.
-            if len(component_subclasses) > 0 and isinstance(conf_field_value, str):
-                for subclass in component_subclasses:
-                    if (
-                        conf_field_value == subclass.__name__
-                        or conf_field_value == subclass.__qualname__
-                        or utils.convert_to_snake_case(conf_field_value)
-                        == utils.convert_to_snake_case(subclass.__name__)
-                    ):
-                        conf_field_value = subclass()
-                        break
+
+            if isinstance(field, ComponentField):
+                # The configuration value could be a string specifying a component
+                # or factory class to instantiate.
+                if len(component_subclasses) > 0 and isinstance(conf_field_value, str):
+                    for subclass in component_subclasses:
+                        if (
+                            conf_field_value == subclass.__name__
+                            or conf_field_value == subclass.__qualname__
+                            or utils.convert_to_snake_case(conf_field_value)
+                            == utils.convert_to_snake_case(subclass.__name__)
+                        ):
+                            conf_field_value = subclass()
+                            break
 
             # Set the value on the instance.
             instance.__component_configured_field_values__[
@@ -455,12 +500,12 @@ def configure(
         # If there is only one concrete component subclass of the annotated
         # type, we assume the user must intend to use that subclass, and so
         # instantiate and use an instance automatically.
-        elif len(component_subclasses) == 1:
+        elif isinstance(field, ComponentField) and len(component_subclasses) == 1:
             component_cls = list(component_subclasses)[0]
-            print_formatted_text(
+            utils.warn(
                 f"'{utils.type_name_str(component_cls)}' is the only concrete component "
                 f"class that satisfies the type of the annotated field '{full_name}'. "
-                "Using an instance of this class by default."
+                "Using an instance of this class by default.",
             )
             # This is safe because we don't allow custom `__init__` methods.
             conf_field_value = component_cls()
@@ -472,12 +517,20 @@ def configure(
 
         # If we are running interactively, prompt for a value.
         elif interactive:
-            if len(component_subclasses) > 0:
-                component_cls = utils.prompt_for_component_subclass(
-                    full_name, component_subclasses
-                )
-                # This is safe because we don't allow custom `__init__` methods.
-                conf_field_value = component_cls()
+            if isinstance(field, ComponentField):
+                if len(component_subclasses) > 0:
+                    component_cls = utils.prompt_for_component_subclass(
+                        full_name, component_subclasses
+                    )
+                    # This is safe because we don't allow custom `__init__` methods.
+                    conf_field_value = component_cls()
+                else:
+                    raise ValueError(
+                        "No component or factory class is defined which satisfies the "
+                        f"type {field_type_name} of field {full_name}. If such a class "
+                        "has been defined, it must be imported before calling "
+                        "`configure`."
+                    )
             else:
                 conf_field_value = utils.prompt_for_value(full_name, field.type)
 
@@ -488,16 +541,28 @@ def configure(
 
         # Otherwise, raise an appropriate error.
         else:
-            if len(component_subclasses) > 0:
-                raise ValueError(
-                    f"Annotated field '{full_name}' of type '{field_type_name}' "
-                    f"has no configured value. Please configure '{full_name}' with "
-                    f"one of the following component subclasses of '{field_type_name}':"
-                    + "\n    ".join(
-                        [""]
-                        + list(utils.type_name_str(c) for c in component_subclasses)
+            if isinstance(field, ComponentField):
+                if len(component_subclasses) > 0:
+                    raise ValueError(
+                        f"Component field '{full_name}' of type '{field_type_name}' "
+                        f"has no default or configured class. Please configure "
+                        f"'{full_name}' with one of the following @component or "
+                        "@factory classes:"
+                        + "\n    ".join(
+                            [""]
+                            + list(utils.type_name_str(c) for c in component_subclasses)
+                        )
                     )
-                )
+                else:
+                    raise ValueError(
+                        f"Component field '{full_name}' of type '{field_type_name}' "
+                        f"has no default or configured class. No defined @component "
+                        "or @factory class satisfies this type. Please define an "
+                        f"@component class subclassing '{field_type_name}', or an "
+                        "@factory class with a `build()` method returning a "
+                        f"'{field_type_name}' instance. This class must be imported "
+                        "before invoking `configure()`."
+                    )
             raise ValueError(
                 "No configuration value found for annotated field "
                 f"'{full_name}' of type '{field_type_name}'."
@@ -512,7 +577,7 @@ def configure(
         if not isinstance(field, ComponentField):
             continue
 
-        sub_component_instance = getattr(instance, field.name)
+        sub_component_instance = base_getattr(instance, field.name)
 
         full_name = f"{instance.__component_name__}.{field.name}"
 

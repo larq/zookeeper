@@ -17,13 +17,12 @@ def task(cls):
     arguments of the form `field_name=field_value`, and then the `run` method is
     called.
     """
-
     cls = component(cls)
 
     if not (hasattr(cls, "run") and callable(cls.run)):
         raise TypeError("Classes decorated with @task must define a `run` method.")
 
-    # Enforce argument-less `run`
+    # Enforce argument-less `run`.
 
     call_args = inspect.signature(cls.run).parameters
     if len(call_args) > 1 or len(call_args) == 1 and "self" not in call_args:

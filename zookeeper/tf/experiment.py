@@ -4,7 +4,6 @@ from tensorflow import keras
 
 from zookeeper.core.field import ComponentField, Field
 from zookeeper.tf.dataset import Dataset
-from zookeeper.tf.model import Model
 from zookeeper.tf.preprocessing import Preprocessing
 
 
@@ -17,7 +16,7 @@ class Experiment:
     # Nested components
     dataset: Dataset = ComponentField()
     preprocessing: Preprocessing = ComponentField()
-    model: Model = ComponentField()
+    model: keras.models.Model = ComponentField()
 
     # Parameters
     epochs: int = Field()

@@ -3,7 +3,22 @@ import re
 from ast import literal_eval
 from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
+import click
+import typeguard
 from prompt_toolkit import print_formatted_text, prompt
+
+
+# A sentinel class/object for missing default values.
+class Missing:
+    def __repr__(self):
+        return f"<missing>"
+
+
+missing = Missing()
+
+
+def warn(message: str) -> None:
+    click.secho(f"WARNING: {message}", fg="yellow", err=True)
 
 
 def is_component_class(cls: Type) -> bool:
@@ -15,6 +30,14 @@ def is_component_class(cls: Type) -> bool:
 
 def is_component_instance(instance: Any) -> bool:
     return is_component_class(instance.__class__)
+
+
+def is_factory_class(cls: Type) -> bool:
+    return is_component_class(cls) and hasattr(cls, "__component_factory_return_type__")
+
+
+def is_factory_instance(instance: Any) -> bool:
+    return is_factory_class(instance.__class__)
 
 
 def generate_subclasses(cls: Type) -> Iterator[Type]:
@@ -50,6 +73,35 @@ def generate_component_ancestors_with_field(
         if field_name in parent.__component_fields__:
             yield parent
         parent = parent.__component_parent__
+
+
+def type_check(value, expected_type) -> bool:
+    """Check that the `value` satisfies type `expected_type`."""
+    if is_factory_instance(value):
+        # If `value` is a @factory instance, what's relevant is the return type
+        # of the `build()` method: we want to check if the return type is a
+        # sub-type of the expected type.
+        try:
+            # If they are both classes, this is easy...
+            return issubclass(value.__component_factory_return_type__, expected_type)
+        except TypeError:
+            # ...but in general this might fail (`issubclass` can't be used with
+            # subscripted generics in Python 3.7, or with any type from the
+            # `typing` module in Python 3.6). If the check fails we should print
+            # a warning and conservatively return `True`.
+            warn(
+                f"Unable to check that {value.__component_factory_return_type__} is a "
+                f"sub-type of {expected_type}."
+            )
+            return True
+    try:
+        # typeguard.check_type requires a name as the first argument for their
+        # error message, but we want to catch their error so we can pass an
+        # empty string.
+        typeguard.check_type("", value, expected_type)
+    except TypeError:
+        return False
+    return True
 
 
 T = TypeVar("T")
@@ -123,7 +175,7 @@ def prompt_for_value(field_name: str, field_type) -> Any:
 
 
 def prompt_for_component_subclass(component_name: str, classes: Sequence[Type]) -> Type:
-    """Prompt the user to choose a compnent subclass from `classes`."""
+    """Prompt the user to choose a component subclass from `classes`."""
 
     print_formatted_text(f"No instance found for nested component '{component_name}'.")
     choices = {cls.__qualname__: cls for cls in classes}
