@@ -385,6 +385,20 @@ def component(cls: Type):
         raise TypeError("Component classes must not define a custom `__init__` method.")
     cls.__init__ = __component_init__
 
+    if hasattr(cls, "__post_configure__"):
+        if not callable(cls.__post_configure__):
+            raise TypeError(
+                "The `__post_configure__` attribute of a @component class must be a "
+                "method."
+            )
+        call_args = inspect.signature(cls.__post_configure__).parameters
+        if len(call_args) > 1 or len(call_args) == 1 and "self" not in call_args:
+            raise TypeError(
+                "The `__post_configure__` method of a @component class must take no "
+                f"arguments except `self`, but `{cls.__name__}.__post_configure__` "
+                f"accepts arguments {tuple(name for name in call_args)}."
+            )
+
     # Populate `__component_fields__` with all fields defined on this class and
     # all superclasses. We have to go through the MRO chain and collect them in
     # reverse order so that they are correctly overriden.
@@ -611,3 +625,6 @@ def configure(
             )
 
     instance.__component_configured__ = True
+
+    if hasattr(instance.__class__, "__post_configure__"):
+        instance.__post_configure__()
