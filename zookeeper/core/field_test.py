@@ -124,6 +124,16 @@ def test_prohibit_underscore_field_name():
             _field = Field()
 
 
+def test_allow_missing():
+    # This should succeed because we don't set a default value...
+    f = Field(allow_missing=True)
+    assert f.allow_missing
+
+    # ...but this should fail because there's a default provided
+    with pytest.raises(ValueError):
+        Field(3.14, allow_missing=True)
+
+
 # Used in the `ComponentField` tests below.
 class AbstractClass:
     a: int = Field()
@@ -184,3 +194,13 @@ def test_component_field_kwargs():
     default_value = A.foo.get_default(A())  # type: ignore
     assert isinstance(default_value, ConcreteComponent)
     assert default_value.a == 5
+
+
+def test_component_field_allow_missing():
+    # This should succeed because we don't set a default value...
+    f = ComponentField(allow_missing=True)
+    assert f.allow_missing
+
+    # ...but this should fail because there's a default provided
+    with pytest.raises(ValueError):
+        ComponentField(3.14, allow_missing=True)
