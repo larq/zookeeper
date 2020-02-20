@@ -472,3 +472,10 @@ def test_component_configure_error_non_existant_key():
     g = GrandParent()
     configure(g, {"parent.b": "bar"})
     assert g.parent.b == "bar"
+
+    # Test that an error is correctly raised recursively.
+    with pytest.raises(
+        ValueError,
+        match="Key 'non_existent_field' does not correspond to any field of component 'GrandParent.parent'.",
+    ):
+        configure(GrandParent(), {"parent.non_existent_field": "bar"})
