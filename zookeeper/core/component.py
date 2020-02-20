@@ -586,6 +586,42 @@ def configure(
         # track of that fact.
         instance.__component_fields_with_values_in_scope__.add(field.name)
 
+    # Check that all `conf` values are being used, and throw if we've been
+    # passed an un-used option.
+    for key in conf:
+        error = ValueError(
+            f"Key '{key}' does not correspond to any field of component "
+            f"'{instance.__component_name__}'."
+            "\n\n"
+            "If you have nested components as follows:\n\n"
+            "```\n"
+            "@component\n"
+            "class ChildComponent:\n"
+            "    a: int = Field(0)\n"
+            "\n"
+            "@task\n"
+            "class SomeTask:\n"
+            "    child: ChildComponent = ComponentField(ChildComponent)\n"
+            "    def run(self):\n"
+            "        print(self.child.a)\n"
+            "```\n\n"
+            "then trying to configure `a=<SOME_VALUE>` will fail. You instead need to "
+            "fully qualify the key name, and configure the value with "
+            "`child.a=<SOME_VALUE>`."
+        )
+
+        if "." in key:
+            scoped_component_name = key.split(".")[0]
+            if not (
+                scoped_component_name in instance.__component_fields__
+                and isinstance(
+                    instance.__component_fields__[scoped_component_name], ComponentField
+                )
+            ):
+                raise error
+        elif key not in instance.__component_fields__:
+            raise error
+
     # Recursively configure any sub-components.
     for field in instance.__component_fields__.values():
         if not isinstance(field, ComponentField):
@@ -607,19 +643,15 @@ def configure(
             )
 
             # Configure the nested sub-component. The configuration we use
-            # consists of all non-scoped keys and any keys scoped to
-            # `field.name`, where the keys scoped to `field.name` override the
-            # non-scoped keys.
-            non_scoped_conf = {a: b for a, b in conf.items() if "." not in a}
+            # consists of all any keys scoped to `field.name`.
             field_name_scoped_conf = {
                 a[len(f"{field.name}.") :]: b
                 for a, b in conf.items()
                 if a.startswith(f"{field.name}.")
             }
-            nested_conf = {**non_scoped_conf, **field_name_scoped_conf}
             configure(
                 sub_component_instance,
-                nested_conf,
+                field_name_scoped_conf,
                 name=full_name,
                 interactive=interactive,
             )

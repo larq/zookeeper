@@ -132,23 +132,16 @@ def test_configure_scoped_override_field_values():
         grand_parent,
         {
             "a": 10,
-            "parent.a": 15,
+            "parent.child.a": 15,
             "b": "foo",
             "parent.child.b": "baz",
-            "c": [1.5, -1.2],
-            "parent.c": [-17.2],
             "parent.child.c": [0, 4.2],
         },
     )
 
-    # The grand-parent `grand_parent` should have the value `a` = 10. Even
-    # though a config value is declared for its scope, `grand_parent.child`
-    # should have no `a` value set, as it doesn't declare `a` as a field.
-    # Despite this, `grand_parent.parent.child` should get the value `a` = 15,
-    # as it lives inside the configuration scope of its parent,
-    # `grand_parent.parent`.
+    # The grand-parent `grand_parent` should have the value `a` = 10, but the
+    # child `grand_parent.parent.child` should get the value `a` = 15.
     assert grand_parent.a == 10
-    assert not hasattr(grand_parent.parent, "a")
     assert grand_parent.parent.child.a == 15
 
     # `b` is declared as a field at all three levels. The 'baz' value should be
@@ -158,8 +151,7 @@ def test_configure_scoped_override_field_values():
     assert grand_parent.parent.b == "foo"
     assert grand_parent.parent.child.b == "baz"
 
-    # `c` is declared as a field only in the child. The more specific scopes
-    # override the more general.
+    # `c` is declared as a field only in the child.
     assert grand_parent.parent.child.c == [0, 4.2]
 
 
@@ -303,7 +295,7 @@ def test_str_and_repr():
 
     p = Parent()
 
-    configure(p, {"a": 10, "b": "foo", "c": [1.5, -1.2]}, name="parent")
+    configure(p, {"child.a": 10, "b": "foo", "child.c": [1.5, -1.2]}, name="parent")
 
     assert (
         click.unstyle(repr(p))
@@ -445,3 +437,45 @@ def test_component_post_configure():
     configure(c, {"a": 1, "b": -3.14})
 
     assert c.c == 1 - 3.14
+
+
+def test_component_configure_error_non_existant_key():
+    @component
+    class Child:
+        a: int = Field(1)
+
+    @component
+    class Parent:
+        b: str = Field("foo")
+        child: Child = ComponentField(Child)
+
+    @component
+    class GrandParent:
+        c: float = Field(3.14)
+        parent: Parent = ComponentField(Parent)
+
+    # A missing key should cause an error.
+    with pytest.raises(
+        ValueError,
+        match="Key 'd' does not correspond to any field of component 'GrandParent'.",
+    ):
+        configure(GrandParent(), {"d": "bar"}, name="GrandParent")
+
+    # 'b' exists on the parent but not the grand-parent, so should be set via
+    # `parent.b='bar'`. This should raise an error:
+    with pytest.raises(
+        ValueError,
+        match="Key 'b' does not correspond to any field of component 'GrandParent'.",
+    ):
+        configure(GrandParent(), {"b": "bar"})
+    # But this should not:
+    g = GrandParent()
+    configure(g, {"parent.b": "bar"})
+    assert g.parent.b == "bar"
+
+    # Test that an error is correctly raised recursively.
+    with pytest.raises(
+        ValueError,
+        match="Key 'non_existent_field' does not correspond to any field of component 'GrandParent.parent'.",
+    ):
+        configure(GrandParent(), {"parent.non_existent_field": "bar"})

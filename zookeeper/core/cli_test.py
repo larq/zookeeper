@@ -42,11 +42,24 @@ def test_pass_param_values(test_task_runner):
     assert result.output == "5 foo False\n"
 
 
-def test_param_key_valid_characters(test_task_runner):
+def test_param_key_valid_characters():
     # We should be able to pass keys with underscores and full stops and
-    # capitals. It's okay here that the param with name `x.y_z.A` doesn't
-    # actually exist.
-    result = test_task_runner.invoke(cli, ["test_task", "a=5", "x.y_z.A=1.0"])
+    # capitals.
+
+    @component
+    class Child:
+        x_Y_z: float = Field(0.0)
+
+    @task
+    class ParentTask:
+        a: int = Field(2)
+        child: Child = ComponentField(Child)
+
+        def run(self):
+            print(self.a, self.child.x_Y_z)
+
+    runner = testing.CliRunner(mix_stderr=False)
+    result = runner.invoke(cli, ["ParentTask", "a=5", "child.x_Y_z=1.0"])
     assert result.exit_code == 0
 
 
