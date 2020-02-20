@@ -525,3 +525,19 @@ def test_component_configure_component_field_allow_missing():
     instance = Parent()
     configure(instance, {"child": "Child1"})
     assert not hasattr(instance, "child_allow_missing")
+
+
+def test_component_allow_missing_field_inherits_defaults():
+    @component
+    class Child:
+        a: int = Field(allow_missing=True)
+
+    @component
+    class Parent:
+        a: int = Field(5)
+        child: Child = ComponentField(Child)
+
+    # This should succeed without error.
+    instance = Parent()
+    configure(instance, {})
+    assert instance.child.a == 5
