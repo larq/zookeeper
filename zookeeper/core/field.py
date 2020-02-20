@@ -186,7 +186,7 @@ class ComponentField(Field, Generic[C, F]):
         default: Union[utils.Missing, F, PartialComponent[F]] = utils.missing,
         **kwargs,
     ):
-        if default in (utils.missing, None):
+        if default is utils.missing:
             if len(kwargs) > 0:
                 raise TypeError(
                     "Keyword arguments can only be passed to `ComponentField` if "
@@ -251,8 +251,6 @@ class ComponentField(Field, Generic[C, F]):
                 f"ComponentField '{self.name}' has no default or configured component "
                 "class."
             )
-        if self._default is None:
-            return self._default
         if not isinstance(component_instance, self.host_component_class):
             raise TypeError(
                 f"ComponentField '{self.name}' belongs to component "

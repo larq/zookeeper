@@ -184,12 +184,3 @@ def test_component_field_kwargs():
     default_value = A.foo.get_default(A())  # type: ignore
     assert isinstance(default_value, ConcreteComponent)
     assert default_value.a == 5
-
-
-def test_component_field_optional():
-    # This should not raise an exception...
-    ComponentField(None)
-
-    # ...but this should
-    with pytest.raises(TypeError):
-        ComponentField(None, a=1, b=2, c=3)
