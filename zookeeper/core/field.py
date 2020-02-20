@@ -27,6 +27,8 @@ class Field(Generic[C, F]):
         default: Union[
             utils.Missing, F, Callable[[], F], Callable[[C], F]
         ] = utils.missing,
+        *,  # `allow_missing` must be a keyword argument.
+        allow_missing: bool = False,
     ):
         # Define here once to avoid having to define twice below.
         default_error = TypeError(
@@ -38,10 +40,16 @@ class Field(Generic[C, F]):
         )
 
         self.name = None
+        self.allow_missing = allow_missing
         self.host_component_class = None
         self.type = None
         self._registered = False
         self._return_annotation = inspect.Signature.empty
+
+        if allow_missing and default is not utils.missing:
+            raise ValueError(
+                "If a `Field` has `allow_missing=True`, no default can be provided."
+            )
 
         if default is utils.missing or utils.is_immutable(default):
             self._default = default
@@ -184,9 +192,16 @@ class ComponentField(Field, Generic[C, F]):
     def __init__(
         self,
         default: Union[utils.Missing, F, PartialComponent[F]] = utils.missing,
+        *,  # `allow_missing` must be a keyword argument.
+        allow_missing: bool = False,
         **kwargs,
     ):
-        if default in (utils.missing, None):
+        if allow_missing and default is not utils.missing:
+            raise ValueError(
+                "If a `Field` has `allow_missing=True`, no default can be provided."
+            )
+
+        if default is utils.missing:
             if len(kwargs) > 0:
                 raise TypeError(
                     "Keyword arguments can only be passed to `ComponentField` if "
@@ -207,6 +222,7 @@ class ComponentField(Field, Generic[C, F]):
             )
 
         self.name = utils.missing
+        self.allow_missing = allow_missing
         self.host_component_class = utils.missing
         self.type = utils.missing
         self._registered = False
@@ -251,8 +267,6 @@ class ComponentField(Field, Generic[C, F]):
                 f"ComponentField '{self.name}' has no default or configured component "
                 "class."
             )
-        if self._default is None:
-            return self._default
         if not isinstance(component_instance, self.host_component_class):
             raise TypeError(
                 f"ComponentField '{self.name}' belongs to component "

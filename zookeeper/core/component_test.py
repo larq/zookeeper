@@ -1,5 +1,5 @@
 import abc
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 from unittest.mock import patch
 
 import click
@@ -341,18 +341,6 @@ def test_error_if_field_overwritten_in_subclass():
             foo = 1
 
 
-def test_component_field_optional_type_check():
-    class A:
-        pass
-
-    @component
-    class B:
-        foo: Optional[A] = ComponentField(None)
-
-    # This should not raise an error.
-    B.foo
-
-
 def test_component_field_factory_type_check(capsys):
     class Base:
         pass
@@ -479,3 +467,61 @@ def test_component_configure_error_non_existant_key():
         match="Key 'non_existent_field' does not correspond to any field of component 'GrandParent.parent'.",
     ):
         configure(GrandParent(), {"parent.non_existent_field": "bar"})
+
+
+def test_component_configure_field_allow_missing():
+    @component
+    class A:
+        a: int = Field()
+        b: float = Field(allow_missing=True)
+
+        @Field
+        def c(self) -> float:
+            if hasattr(self, "b"):
+                return self.b
+            return self.a
+
+    # Missing field 'a' should cause an error.
+    with pytest.raises(
+        ValueError,
+        match="No configuration value found for annotated field 'A.a' of type 'int'.",
+    ):
+        configure(A(), {"b": 3.14})
+
+    # But missing field 'b' should not cause an error.
+    instance = A()
+    configure(instance, {"a": 0})
+    assert instance.c == 0
+    instance = A()
+    configure(instance, {"a": 0, "b": 3.14})
+    assert instance.c == 3.14
+
+
+def test_component_configure_component_field_allow_missing():
+    class Base:
+        a: int = Field()
+
+    @component
+    class Child1(Base):
+        a = Field(5)
+
+    @component
+    class Child2(Base):
+        a = Field(5)
+
+    @component
+    class Parent:
+        child: Base = ComponentField()
+        child_allow_missing: Base = ComponentField(allow_missing=True)
+
+    # Missing out "child" should cause an error.
+    with pytest.raises(
+        ValueError,
+        match="Component field 'Parent.child' of type 'Base' has no default or configured class.",
+    ):
+        configure(Parent(), {"child_allow_missing": "Child2"})
+
+    # But missing out "child_allow_missing" should succeed.
+    instance = Parent()
+    configure(instance, {"child": "Child1"})
+    assert not hasattr(instance, "child_allow_missing")

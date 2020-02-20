@@ -511,6 +511,11 @@ def configure(
         elif field.name in instance.__component_fields_with_values_in_scope__:
             pass
 
+        # If the field explicitly allows values to be missing, there's no need
+        # to do anything.
+        elif field.allow_missing:
+            pass
+
         # If there is only one concrete component subclass of the annotated
         # type, we assume the user must intend to use that subclass, and so
         # instantiate and use an instance automatically.
@@ -627,7 +632,12 @@ def configure(
         if not isinstance(field, ComponentField):
             continue
 
-        sub_component_instance = base_getattr(instance, field.name)
+        try:
+            sub_component_instance = base_getattr(instance, field.name)
+        except AttributeError as e:
+            if field.allow_missing:
+                continue
+            raise e from None
 
         full_name = f"{instance.__component_name__}.{field.name}"
 
