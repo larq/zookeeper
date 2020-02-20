@@ -643,19 +643,15 @@ def configure(
             )
 
             # Configure the nested sub-component. The configuration we use
-            # consists of all non-scoped keys and any keys scoped to
-            # `field.name`, where the keys scoped to `field.name` override the
-            # non-scoped keys.
-            non_scoped_conf = {a: b for a, b in conf.items() if "." not in a}
+            # consists of all any keys scoped to `field.name`.
             field_name_scoped_conf = {
                 a[len(f"{field.name}.") :]: b
                 for a, b in conf.items()
                 if a.startswith(f"{field.name}.")
             }
-            nested_conf = {**non_scoped_conf, **field_name_scoped_conf}
             configure(
                 sub_component_instance,
-                nested_conf,
+                field_name_scoped_conf,
                 name=full_name,
                 interactive=interactive,
             )
