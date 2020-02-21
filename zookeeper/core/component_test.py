@@ -287,6 +287,7 @@ def test_str_and_repr():
         a: int = Field()
         b: str = Field()
         c: List[float] = Field()
+        d: int = Field(allow_missing=True)
 
     @component
     class Parent:
@@ -299,7 +300,7 @@ def test_str_and_repr():
 
     assert (
         click.unstyle(repr(p))
-        == """Parent(b="foo", child=Child(a=10, b="foo", c=[1.5, -1.2]))"""
+        == """Parent(b="foo", child=Child(a=10, b="foo", c=[1.5, -1.2], d=<missing>))"""
     )
     assert (
         click.unstyle(str(p))
@@ -308,7 +309,8 @@ def test_str_and_repr():
     child=Child(
         a=10,
         b="foo",
-        c=[1.5, -1.2]
+        c=[1.5, -1.2],
+        d=<missing>
     )
 )"""
     )
