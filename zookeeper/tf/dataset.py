@@ -4,9 +4,9 @@ from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_datasets as tfds
-
 from zookeeper.core.field import Field
+
+import tensorflow_datasets as tfds
 
 
 class Dataset(abc.ABC):
@@ -200,12 +200,14 @@ class DummyData(TFDSDataset, abc.ABC):
         self.output_types = {}
         self.output_shapes = {}
         for key, value in self.info.features.items():
-            if not type(value) is tfds.features.Image:
-                self.output_types[key] = value.dtype
-                self.output_shapes[key] = value.shape
-            else:
+            # If the type is Image, we assume it is stored in encoded form, hence
+            # tf.string.
+            if type(value) is tfds.features.Image:
                 self.output_types[key] = tf.string
                 self.output_shapes[key] = None
+            else:
+                self.output_types[key] = value.dtype
+                self.output_shapes[key] = value.shape
 
     def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         """
