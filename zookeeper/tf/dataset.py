@@ -1,6 +1,8 @@
 import abc
-from typing import Dict, Optional, Tuple
+from pathlib import Path
+from typing import Dict, Optional, Tuple, Union
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -177,3 +179,92 @@ class MultiTFDSDataset(Dataset):
             self.load(self.validation_split, decoders=decoders, shuffle=False),
             self.num_examples(self.validation_split),
         )
+
+
+class DummyData(TFDSDataset, abc.ABC):
+    """
+    Abstract class that represents a small subset of a TFDS dataset, loaded from a
+    numpy file. Both splits contain the same data.
+    """
+
+    # train_split: str = Field("")
+    size: int = Field()  # Number of examples in this dummy dataset
+    info: tfds.core.DatasetInfo = Field()  # The DatasetInfo of the original dataset
+    filename: Path  # Path to the .npy file that stores the data
+
+    def num_examples(self, split: str = "") -> int:
+        return self.size
+
+    def __post_configure__(self):
+        # Infer output types and shapes from DatasetInfo
+        self.output_types = {}
+        self.output_shapes = {}
+        for key, value in self.info.features.items():
+            if not type(value) is tfds.features.Image:
+                self.output_types[key] = value.dtype
+                self.output_shapes[key] = value.shape
+            else:
+                self.output_types[key] = tf.string
+                self.output_shapes[key] = None
+
+    def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+        """
+        Return a tuple of the training dataset and the number of training
+        examples in the dataset.
+        """
+        dataset = tf.data.Dataset.from_generator(
+            self.generate_data,
+            output_types=self.output_types,
+            output_shapes=self.output_shapes,
+        )
+        return (dataset, self.num_examples())
+
+    def validation(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
+        return self.train()
+
+    def generate_data(self):
+        data = np.load(self.filename, allow_pickle=True)
+
+        if len(data) != self.size:
+            raise ValueError(
+                f"Dataset loaded from {self.filename} contains {len(data)} examples,"
+                f"expected {self.size}!"
+            )
+
+        for example in data:
+            yield example
+
+    @staticmethod
+    def create_dummy_data(
+        dataset: TFDSDataset,
+        num_examples: int,
+        decoders: Optional[Dict[str, Union[tfds.decode.Decoder, Dict]]] = None,
+        split: str = "train",
+        output_file: Optional[str] = None,
+    ) -> None:
+        """
+        Take an existing TFDSDataset and create a dummy data subset from it, saved to
+        the target file. This dummy data can then later be accessed through a custom
+        DummyData subclass representing it.
+        """
+
+        if split == "train":
+            data, num_validation_examples = dataset.train(decoders=decoders)
+        elif split == "validation":
+            data, num_validation_examples = dataset.validation(decoders=decoders)
+        else:
+            raise ValueError(
+                f"`split` must be either 'train' or 'validation', received '{split}''"
+            )
+
+        filename = output_file or f"dummy_{dataset.__class__.__name__}.npy"
+
+        samples = []
+        for x in tfds.as_numpy(data):
+            if len(samples) == num_examples:
+                break
+
+            samples.append(x)
+
+        np.save(filename, samples)
+        print(f"Saved dummy data at path {filename}")
