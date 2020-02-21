@@ -4,9 +4,9 @@ from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
-from zookeeper.core.field import Field
-
 import tensorflow_datasets as tfds
+
+from zookeeper.core.field import Field
 
 
 class Dataset(abc.ABC):
