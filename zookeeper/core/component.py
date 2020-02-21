@@ -290,15 +290,18 @@ def __component_repr__(instance):
     if not instance.__component_configured__:
         return f"<Unconfigured component '{instance.__component_name__}' instance>"
 
-    field_strings = [
-        _field_key_val_str(
-            field_name,
-            base_getattr(instance, field_name),
-            color=False,
-            single_line=True,
+    field_strings = []
+    for field_name, field in instance.__component_fields__.items():
+        try:
+            value = base_getattr(instance, field_name)
+        except AttributeError as e:
+            if field.allow_missing:
+                value = utils.missing
+            else:
+                raise e from None
+        field_strings.append(
+            _field_key_val_str(field_name, value, color=False, single_line=True)
         )
-        for field_name in instance.__component_fields__.keys()
-    ]
 
     joined_str = ", ".join(field_strings)
 
@@ -309,15 +312,18 @@ def __component_str__(instance):
     if not instance.__component_configured__:
         return f"<Unconfigured component '{instance.__component_name__}' instance>"
 
-    field_strings = [
-        _field_key_val_str(
-            field_name,
-            base_getattr(instance, field_name),
-            color=True,
-            single_line=False,
+    field_strings = []
+    for field_name, field in instance.__component_fields__.items():
+        try:
+            value = base_getattr(instance, field_name)
+        except AttributeError as e:
+            if field.allow_missing:
+                value = utils.missing
+            else:
+                raise e from None
+        field_strings.append(
+            _field_key_val_str(field_name, value, color=True, single_line=False)
         )
-        for field_name in instance.__component_fields__.keys()
-    ]
 
     joined_str = f",\n{INDENT}".join(field_strings)
 
