@@ -191,6 +191,7 @@ class DummyData(TFDSDataset, abc.ABC):
     size: int = Field()  # Number of examples in this dummy dataset
     info: tfds.core.DatasetInfo = Field()  # The DatasetInfo of the original dataset
     filename: Path  # Path to the .npy file that stores the data
+    train_split: str = Field("")
 
     def num_examples(self, split: str = "") -> int:
         return self.size
@@ -235,6 +236,10 @@ class DummyData(TFDSDataset, abc.ABC):
 
         for example in data:
             yield example
+
+    @Field
+    def name(self):
+        return self.__class__.__name__
 
     @staticmethod
     def create_dummy_data(

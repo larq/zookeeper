@@ -1,4 +1,4 @@
-from zookeeper.tf.dataset import Dataset, MultiTFDSDataset, TFDSDataset
+from zookeeper.tf.dataset import Dataset, DummyData, MultiTFDSDataset, TFDSDataset
 from zookeeper.tf.experiment import Experiment
 from zookeeper.tf.preprocessing import Preprocessing
 
@@ -8,4 +8,5 @@ __all__ = [
     "MultiTFDSDataset",
     "Preprocessing",
     "TFDSDataset",
+    "DummyData",
 ]
