@@ -26,13 +26,16 @@ configuration scoping:
 ```
 @component
 class A:
+    w: int = Field(3)
     x: int = Field()
+    y: str = Field("foo")
     z: float = Field()
 
 @component
 class B:
     a: A = ComponentField()
-    y: str = Field("foo")
+    w: int = Field(5)
+    y: str = Field("bar")
 
 @component
 class C:
@@ -48,7 +51,7 @@ configure(
         "b.x": 10,                  # (2)
         "b.a.x": 15,                # (3)
 
-        "b.y": "bar",               # (4)
+        "b.y": "baz",               # (4)
 
         "b.z": 2.71                 # (5)
     }
@@ -58,10 +61,13 @@ print(c)
 >>  C(
         b = B(
             a = A(
+                w = 3,              # default from child, not parent
                 x = 15,             # (3) overrides (2) overrides (1)
+                y = "baz",          # (4) overrides child default
                 z = 2.71            # Inherits from parent: (5)
             ),
-            y = "bar"               # (4) overrides the default
+            w = 5,                  # default
+            y = "baz"               # (4) overrides the default
         ),
         x = 5,                      # Only (1) applies
         z = 3.14                    # The default is taken
