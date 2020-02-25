@@ -3,11 +3,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 import tensorflow as tf
-import tensorflow_datasets as tfds
-
 from zookeeper import Field, component
 from zookeeper.core.component import configure
 from zookeeper.tf import DummyData
+
+import tensorflow_datasets as tfds
 
 
 @component
@@ -78,8 +78,9 @@ def test_dummy_data_validation():
         configure(dataset, {})
         data, num_examples = dataset.train()
 
-        # We need to actually access the data in order to call `generate_data`
-        for sample in data:
+        # We need to actually access the data in order to call `generate_data`.
+        # `as_numpy` is necessary to trigger any errors on TF1.14 at all...
+        for sample in tfds.as_numpy(data):
             break
 
     # If the file contains the wrong types, we expect a TypeError wrapped in an
@@ -92,5 +93,5 @@ def test_dummy_data_validation():
         data, num_examples = dataset.train()
 
         # We need to actually access the data in order to call `generate_data`
-        for sample in data:
+        for sample in tfds.as_numpy(data):
             break
