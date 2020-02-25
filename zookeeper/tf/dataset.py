@@ -245,7 +245,9 @@ class DummyData(TFDSDataset, abc.ABC):
     def create_dummy_data(
         dataset: TFDSDataset,
         num_examples: int,
-        decoders: Optional[Dict[str, Union[tfds.decode.Decoder, Dict]]] = None,
+        decoders: Optional[Dict[str, Union[tfds.decode.Decoder, Dict]]] = {
+            "image": tfds.decode.SkipDecoding()
+        },
         split: str = "train",
         output_file: Optional[str] = None,
     ) -> None:

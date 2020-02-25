@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from zookeeper import Field, component
@@ -11,12 +12,22 @@ from zookeeper.tf import DummyData
 
 @component
 class TinyVOC(DummyData):
-    num_classes: int = Field(20)
     size: int = Field(32)
     filename: Path = Field(
         lambda: Path(__file__).parent / "fixtures" / "dummy_VOC2007.npy"
     )
     info: tfds.core.DatasetInfo = Field(lambda: tfds.builder("voc/2007").info)
+
+
+@component
+class TinyFlowers(DummyData):
+    size: int = Field(32)
+    filename: Path = Field(
+        lambda: Path(__file__).parent / "fixtures" / "dummy_OxfordFlowers.npy"
+    )
+    info: tfds.core.DatasetInfo = Field(
+        lambda: tfds.builder("oxford_flowers102:2.0.*").info
+    )
 
 
 def convert_to_numpy(dataset):
@@ -37,8 +48,8 @@ def assert_dict_equal(dict1, dict2):
             assert np.all(dict1[key] == dict2[key])
 
 
-@pytest.mark.parametrize("dataset", [TinyVOC()])
-def test_dummy_data(dataset):
+@pytest.mark.parametrize("dataset", [TinyVOC(), TinyFlowers()])
+def test_dummy_data_load(dataset):
     configure(dataset, {})  # To ensure __post_configure__ is called
     assert dataset.num_examples("train") == dataset.size
     assert dataset.num_examples("validation") == dataset.size
@@ -57,3 +68,29 @@ def test_dummy_data(dataset):
     assert len(validation_data) == len(loaded_data) == num_examples == dataset.size
     for loaded, validation in zip(loaded_data, validation_data):
         assert_dict_equal(loaded, validation)
+
+
+def test_dummy_data_validation():
+    # A size mismatch between the dataset and the numpy file should raise a ValueError.
+    # Unfortunately, `Dataset.from_generator` turns this into an InvalidArgumentError.
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        dataset = TinyVOC(size=16)
+        configure(dataset, {})
+        data, num_examples = dataset.train()
+
+        # We need to actually access the data in order to call `generate_data`
+        for sample in data:
+            break
+
+    # If the file contains the wrong types, we expect a TypeError wrapped in an
+    # InvalidArgumentError.
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        dataset = TinyVOC(
+            filename=Path(__file__).parent / "fixtures" / "dummy_OxfordFlowers.npy"
+        )
+        configure(dataset, {})
+        data, num_examples = dataset.train()
+
+        # We need to actually access the data in order to call `generate_data`
+        for sample in data:
+            break
