@@ -393,6 +393,30 @@ def test_component_field_factory_type_check(capsys):
     )
 
 
+def test_component_getattr_value_via_factory_parent():
+    """See https://github.com/larq/zookeeper/issues/121."""
+
+    @component
+    class Child:
+        x: int = Field()
+
+    @factory
+    class Factory:
+        child: Child = ComponentField(Child)
+
+        x: int = Field(5)
+
+        def build(self) -> int:
+            return self.child.x
+
+    f = Factory()
+
+    configure(f, {})
+
+    assert f.child.x == 5
+    assert f.build() == 5
+
+
 def test_component_post_configure():
     with pytest.raises(
         TypeError,

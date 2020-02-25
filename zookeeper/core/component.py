@@ -215,7 +215,9 @@ def _wrap_getattribute(component_cls: Type) -> None:
     @functools.wraps(base_wrapped_fn)
     def wrapped_fn(instance, name):
         result = base_wrapped_fn(instance, name)
-        if utils.is_factory_instance(result):
+        if name in base_wrapped_fn(
+            instance, "__component_fields__"
+        ) and utils.is_factory_instance(result):
             return result.build()
         return result
 
