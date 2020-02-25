@@ -3,11 +3,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 import tensorflow as tf
+import tensorflow_datasets as tfds
+
 from zookeeper import Field, component
 from zookeeper.core.component import configure
-from zookeeper.tf import DummyData
-
-import tensorflow_datasets as tfds
+from zookeeper.tf import DummyData, TFDSDataset
 
 
 @component
@@ -95,3 +95,9 @@ def test_dummy_data_validation():
         # We need to actually access the data in order to call `generate_data`
         for sample in tfds.as_numpy(data):
             break
+
+
+def test_dummy_data_creation():
+    # Split name is invalid
+    with pytest.raises(ValueError):
+        DummyData.create_dummy_data(TFDSDataset(), num_examples=1, split="invalid")
