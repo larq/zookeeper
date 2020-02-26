@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from zookeeper.core import utils
 from zookeeper.core.field import Field
 
 
@@ -61,6 +62,9 @@ class TFDSDataset(Dataset):
     # The directory that the dataset is stored in.
     data_dir: Optional[str] = Field(None)
 
+    # Whether or not to download the dataset (if it's not already downloaded).
+    download: bool = Field(False)
+
     # Train and validation splits. A validation split is not required.
     train_split: str = Field()
     validation_split: Optional[str] = Field(None)
@@ -97,13 +101,23 @@ class TFDSDataset(Dataset):
     def load(self, split, decoders, shuffle) -> tf.data.Dataset:
         """Return a `tf.data.Dataset` object representing the requested split."""
 
-        return tfds.load(
-            name=self.name,
-            split=split,
-            data_dir=self.data_dir,
-            decoders=decoders,
-            as_dataset_kwargs={"shuffle_files": shuffle},
-        )
+        try:
+            return tfds.load(
+                name=self.name,
+                split=split,
+                data_dir=self.data_dir,
+                download=self.download,
+                decoders=decoders,
+                as_dataset_kwargs={"shuffle_files": shuffle},
+            )
+        except AssertionError as e:
+            if not self.download:
+                utils.warn(
+                    f"Field 'download' of component {self.__class__.__name__} is False. "
+                    "If the TFDS dataset is not downloaded, set 'download' to True to "
+                    "call `download_and_prepare()` automatically."
+                )
+            raise e from None
 
     def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
         return (
@@ -129,6 +143,12 @@ class MultiTFDSDataset(Dataset):
     to be trained on data that is combined from multiple datasets.
     """
 
+    # The directory that the dataset is stored in.
+    data_dir: Optional[str] = Field(None)
+
+    # Whether or not to download the dataset (if it's not already downloaded).
+    download: bool = Field(False)
+
     # A non-empty mapping from dataset names as keys to splits as values. The
     # training data will be the concatenation of the datasets loaded from each
     # (key, value) pair.
@@ -137,9 +157,6 @@ class MultiTFDSDataset(Dataset):
     # As above, a mapping from dataset names as keys to splits as values. May be
     # empty, indicating no validation data.
     validation_split: Dict[str, str] = Field(lambda: {})
-
-    # The directory that the dataset is stored in.
-    data_dir: Optional[str] = Field(None)
 
     def num_examples(self, splits) -> int:
         """
@@ -156,13 +173,23 @@ class MultiTFDSDataset(Dataset):
     def load(self, splits, decoders, shuffle) -> tf.data.Dataset:
         result = None
         for name, split in splits.items():
-            dataset = tfds.load(
-                name=name,
-                split=split,
-                data_dir=self.data_dir,
-                decoders=decoders,
-                as_dataset_kwargs={"shuffle_files": shuffle},
-            )
+            try:
+                dataset = tfds.load(
+                    name=name,
+                    split=split,
+                    data_dir=self.data_dir,
+                    download=self.download,
+                    decoders=decoders,
+                    as_dataset_kwargs={"shuffle_files": shuffle},
+                )
+            except AssertionError as e:
+                if not self.download:
+                    utils.warn(
+                        f"Field 'download' of component {self.__class__.__name__} is "
+                        "False. If the TFDS dataset is not downloaded, set 'download' "
+                        "to True to call `download_and_prepare()` automatically."
+                    )
+                raise e from None
             result = result.concatenate(dataset) if result is not None else dataset
         return result
 
