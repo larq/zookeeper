@@ -326,7 +326,7 @@ def test_type_check(ExampleComponentClass):
     # Attempting to access the field should now raise a type error.
     with pytest.raises(
         TypeError,
-        match="Field 'a' of component 'x' is annotated with type '<class 'int'>', which is not satisfied by default value 4.5.",
+        match="Field 'a' of component 'x' is annotated with type '<class 'int'>', which is not satisfied by value 4.5.",
     ):
         instance.a
 
@@ -415,6 +415,34 @@ def test_component_getattr_value_via_factory_parent():
 
     assert f.child.x == 5
     assert f.build() == 5
+
+
+def test_component_inherited_factory_value():
+    """https://github.com/larq/zookeeper/issues/123."""
+
+    @factory
+    class IntFactory:
+        def build(self) -> int:
+            return 5
+
+    @component
+    class Child:
+        x: int = ComponentField()
+
+    @component
+    class Parent:
+        child: Child = ComponentField(Child)
+        x: int = ComponentField(IntFactory)
+
+    p = Parent()
+    configure(p, {})
+    assert p.x == 5
+    assert p.child.x == 5
+
+    p = Parent()
+    configure(p, {"child.x": 7})
+    assert p.x == 5
+    assert p.child.x == 7
 
 
 def test_component_post_configure():

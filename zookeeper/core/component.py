@@ -106,7 +106,7 @@ def _type_check_and_cache(instance, field: Field, result: Any) -> None:
         raise TypeError(
             f"Field '{field.name}' of component '{instance.__component_name__}' is "
             f"annotated with type '{field.type}', which is not satisfied by "
-            f"default value {repr(result)}."
+            f"value {repr(result)}."
         )
 
     object.__setattr__(instance, field.name, result)
@@ -186,7 +186,7 @@ def _wrap_getattribute(component_cls: Type) -> None:
                 utils.generate_component_ancestors_with_field(instance, name), None
             )
             try:
-                result = getattr(parent_instance, name)
+                result = base_getattr(parent_instance, name)
             except AttributeError:
                 # From here we raise the original exception instead because it
                 # will correctly refer to this component rather than some parent
@@ -654,6 +654,9 @@ def configure(
             if field.allow_missing:
                 continue
             raise e from None
+
+        if not utils.is_component_instance(sub_component_instance):
+            continue
 
         full_name = f"{instance.__component_name__}.{field.name}"
 
