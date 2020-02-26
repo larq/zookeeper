@@ -186,7 +186,7 @@ def _wrap_getattribute(component_cls: Type) -> None:
                 utils.generate_component_ancestors_with_field(instance, name), None
             )
             try:
-                result = base_getattr(parent_instance, name)
+                result = parent_instance.__base_getattribute__(name)  # type: ignore
             except AttributeError:
                 # From here we raise the original exception instead because it
                 # will correctly refer to this component rather than some parent
