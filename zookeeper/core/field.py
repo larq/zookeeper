@@ -210,7 +210,7 @@ class ComponentField(Field, Generic[C, F]):
         elif isinstance(default, PartialComponent) or utils.is_component_class(default):
             if len(kwargs) > 0:
                 default = PartialComponent(default, **kwargs)
-        elif utils.is_component_instance:
+        elif utils.is_component_instance(default):
             raise TypeError(
                 "The `default` passed to `ComponentField` must be a component class, "
                 f"not a component instance. Received: {repr(default)}."
