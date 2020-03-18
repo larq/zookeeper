@@ -523,6 +523,40 @@ def test_component_configure_error_non_existant_key():
         configure(GrandParent(), {"parent.non_existent_field": "bar"})
 
 
+def test_component_configure_error_non_component_instance():
+    class A:
+        a: int = Field()
+
+    with pytest.raises(
+        TypeError,
+        match="Only @component, @factory, and @task instances can be configured.",
+    ):
+        configure(A(), conf={"a": 5})
+
+    @component
+    class B:
+        b: int = Field()
+
+    with pytest.raises(
+        TypeError,
+        match="Only @component, @factory, and @task instances can be configured.",
+    ):
+        # The following we expect to fail because it is a component class, not
+        # an instance.
+        configure(B, conf={"b": 3})
+
+    class C(B):
+        c: int = Field()
+
+    with pytest.raises(
+        TypeError,
+        match="Only @component, @factory, and @task instances can be configured.",
+    ):
+        # Even the an instance of a class that subclasses a component class
+        # should fail.
+        configure(C(), conf={"b": 3, "c": 42})
+
+
 def test_component_configure_field_allow_missing():
     @component
     class A:

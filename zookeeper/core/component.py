@@ -474,6 +474,13 @@ def configure(
     overwrite any values already set on the instance - either class defaults
     or those set in `__init__`.
     """
+    # Only component instances can be configured.
+    if not utils.is_component_instance(instance):
+        raise TypeError(
+            "Only @component, @factory, and @task instances can be configured. "
+            f"Received: {instance}."
+        )
+
     # Configuration can only happen once.
     if instance.__component_configured__:
         raise ValueError(
