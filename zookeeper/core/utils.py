@@ -117,15 +117,16 @@ def wrap_in_callable(value: T) -> Callable[[], T]:
 def is_immutable(value: Any) -> bool:
     """
     Decide the immutability of `value`. Recurses a single level if `value` is a
-    set or a tuple, but does not recurse infinitely.
+    tuple, but does not recurse infinitely.
     """
     return (
         value is None
         or isinstance(value, (int, float, bool, str, frozenset))
         or (
-            isinstance(value, (set, tuple))
+            isinstance(value, tuple)
             and all(
-                isinstance(inner_value, (int, float, bool, str, frozenset))
+                inner_value is None
+                or isinstance(inner_value, (int, float, bool, str, frozenset))
                 for inner_value in value
             )
         )
