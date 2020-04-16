@@ -1,6 +1,6 @@
 import pytest
 
-from zookeeper.core.component import component
+from zookeeper.core.component import component, configure
 from zookeeper.core.field import ComponentField, Field
 from zookeeper.core.partial_component import PartialComponent
 
@@ -21,6 +21,7 @@ def ExampleComponentClasses():
 
     @component
     class Parent:
+        a: int = Field(10)
         child: AbstractChild = ComponentField()
 
     return Parent, Child1, Child2
@@ -67,3 +68,18 @@ def test_init_error_no_kwargs(ExampleComponentClasses):
         match="`PartialComponent` must receive at least one keyword argument.",
     ):
         PartialComponent(Child2)
+
+
+def test_kwargs_accept_component_class(ExampleComponentClasses):
+    Parent, Child1, _ = ExampleComponentClasses
+
+    # This should succeed without error.
+    partial = PartialComponent(Parent, child=Child1)
+
+    # Generate a component instance from the partial, and configure it.
+    p = partial()
+    configure(p, {})
+
+    assert isinstance(p.child, Child1)
+    assert p.child.b == "foo"
+    assert p.child.a == 10  # This tests that field value inheritence still works.
