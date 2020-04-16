@@ -12,9 +12,11 @@ _ComponentType = TypeVar("_ComponentType")
 _kwargs_error = TypeError(
     "Keyword arguments passed to `PartialComponent` must be either:\n"
     "- An immutable value (int, float, bool, string, or None).\n"
-    "- A function or lambda accepting no arguments and returning the \n"
-    "  value that should be passed to the component upon instantiation.\n"
-    "- Another `PartialComponent`."
+    "- A function or lambda accepting no arguments and returning the value that "
+    "should be passed to the component upon instantiation.\n"
+    "- An @component class that will be used to instantiate a component instance "
+    "for the corresponding field value.\n"
+    "- Another `PartialComponent`.\n"
     "Wrapping non-immutable values in a function / lambda allows the values "
     "to be lazily evaluated; they won't be created at all if the partial "
     "component is never instantiated."
@@ -56,6 +58,8 @@ class PartialComponent(Generic[_ComponentType]):
                 )
             if utils.is_immutable(value):
                 lazy_kwargs[name] = utils.wrap_in_callable(value)
+            elif utils.is_component_class(value) or isinstance(value, PartialComponent):
+                lazy_kwargs[name] = value
             else:
                 if not inspect.isfunction(value):
                     raise _kwargs_error
