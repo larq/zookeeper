@@ -83,3 +83,17 @@ def test_kwargs_accept_component_class(ExampleComponentClasses):
     assert isinstance(p.child, Child1)
     assert p.child.b == "foo"
     assert p.child.a == 10  # This tests that field value inheritence still works.
+
+
+def test_kwargs_accept_nested_partial_component(ExampleComponentClasses):
+    Parent, Child1, _ = ExampleComponentClasses
+
+    # This should succeed without error.
+    partial = PartialComponent(Parent, child=PartialComponent(Child1, a=5))
+
+    # Generate a component instance from the partial, and configure it.
+    p = partial()
+    configure(p, {})
+
+    assert isinstance(p.child, Child1)
+    assert p.child.a == 5

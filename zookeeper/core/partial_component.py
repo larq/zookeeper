@@ -58,7 +58,7 @@ class PartialComponent(Generic[_ComponentType]):
                 )
             if utils.is_immutable(value):
                 lazy_kwargs[name] = utils.wrap_in_callable(value)
-            elif utils.is_component_class(value):
+            elif utils.is_component_class(value) or isinstance(value, PartialComponent):
                 lazy_kwargs[name] = value
             else:
                 if not inspect.isfunction(value):
