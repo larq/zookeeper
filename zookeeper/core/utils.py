@@ -5,7 +5,6 @@ from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
 import click
 import typeguard
-from prompt_toolkit import print_formatted_text, prompt
 
 
 # A sentinel class/object for missing default values.
@@ -164,37 +163,33 @@ def parse_value_from_string(string: str) -> Any:
 def prompt_for_value(field_name: str, field_type) -> Any:
     """Promt the user to input a value for the parameter `field_name`."""
 
-    print_formatted_text(
-        f"No value found for field '{field_name}' of type '{field_type}'. "
-        "Please enter a value for this parameter:"
+    return click.prompt(
+        f"\nNo value found for field '{field_name}' of type '{field_type}'. ",
+        prompt_suffix="Please enter a value for this parameter:\n> ",
+        value_proc=parse_value_from_string,
     )
-    response = prompt("> ")
-    while response == "":
-        print_formatted_text(f"No input received, please enter a value:")
-        response = prompt("> ")
-    return parse_value_from_string(response)
 
 
-def prompt_for_component_subclass(component_name: str, classes: Sequence[Type]) -> Type:
+def prompt_for_component_subclass(component_name: str, classes: Sequence[T]) -> T:
     """Prompt the user to choose a component subclass from `classes`."""
 
-    print_formatted_text(f"No instance found for nested component '{component_name}'.")
     choices = {cls.__qualname__: cls for cls in classes}
     names = sorted(list(choices.keys()))
-    print_formatted_text(
-        f"Please choose from one of the following component subclasses to instantiate:\n"
-        + "\n".join([f"{i + 1})    {o}" for i, o in enumerate(names)])
-    )
-    response = prompt("> ")
-    while True:
+
+    def process_index(string: str) -> int:
         try:
-            response = int(response) - 1
+            index = int(string) - 1
         except ValueError:
-            response = -1
-        if 0 <= response < len(names):
-            break
-        print_formatted_text(
-            f"Invalid input. Please enter a number between 1 and {len(names)}:"
-        )
-        response = prompt("> ")
-    return choices[names[response]]
+            index = -1
+        if 0 <= index < len(names):
+            return index
+        raise click.UsageError(f"Please enter a number between 1 and {len(names)}.")
+
+    index = click.prompt(
+        f"\nNo instance found for nested component '{component_name}'. Please choose "
+        "from one of the following component subclasses to instantiate:\n"
+        + "\n".join([f"{i + 1})  {o}" for i, o in enumerate(names)]),
+        prompt_suffix="\n> ",
+        value_proc=process_index,
+    )
+    return choices[names[index]]
