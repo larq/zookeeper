@@ -45,8 +45,14 @@ def base_splits(split):
 
     if "+" in split:
         return split.split("+")
-    elif isinstance(split, tfds.core.splits._SplitMerged):
-        return base_splits(split._split1) + base_splits(split._split2)
+    try:
+        # We still support older TFDS versions with the old split API, but it
+        # was removed in later versions, so we have to wrap this test in a
+        # try-except block.
+        if isinstance(split, tfds.core.splits._SplitMerged):
+            return base_splits(split._split1) + base_splits(split._split2)
+    except Exception:
+        pass
     return [split]
 
 
