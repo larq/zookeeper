@@ -217,7 +217,7 @@ def test_configure_interactive_prompt_missing_field_value(ExampleComponentClass)
     x = ExampleComponentClass()
     a_value = 42
 
-    with patch("zookeeper.core.utils.prompt", return_value=str(a_value)) as prompt:
+    with patch("click.prompt", return_value=a_value) as prompt:
         configure(x, {"b": "bar"}, name="FAKE_NAME", interactive=True)
 
     assert x.a == a_value
@@ -269,7 +269,7 @@ def test_configure_interactive_prompt_for_subcomponent_choice():
     for i, expected_choice in enumerate(expected_class_choices):
         p = Parent()
 
-        with patch("zookeeper.core.utils.prompt", return_value=str(i + 1)) as prompt:
+        with patch("click.prompt", return_value=i) as prompt:
             configure(p, {}, interactive=True)
 
         assert isinstance(p.child, expected_choice)
