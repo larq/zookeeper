@@ -1,4 +1,4 @@
-from typing import Optional, Union, Sequence
+from typing import Optional, Sequence, Union
 
 from tensorflow import keras
 
