@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Sequence
 
 from tensorflow import keras
 
@@ -21,5 +21,7 @@ class Experiment:
     # Parameters
     epochs: int = Field()
     batch_size: int = Field()
-    loss: Optional[Union[keras.losses.Loss, str]] = Field()
+    loss: Optional[
+        Union[Sequence[Union[keras.losses.Loss, str]]], Union[keras.losses.Loss, str]
+    ] = Field()
     optimizer: Union[keras.optimizers.Optimizer, str] = Field()
