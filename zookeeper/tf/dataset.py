@@ -5,7 +5,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from zookeeper.core import utils
-from zookeeper.core.field import Field
+from zookeeper.core.field import Field  # type: ignore
 
 
 class Dataset(abc.ABC):

@@ -7,7 +7,9 @@ import pytest
 
 from zookeeper.core.component import component, configure
 from zookeeper.core.factory import factory
-from zookeeper.core.field import ComponentField, Field
+from zookeeper.core.field import ComponentField, Field  # type: ignore
+
+# pytype: disable=invalid-annotation
 
 
 @pytest.fixture

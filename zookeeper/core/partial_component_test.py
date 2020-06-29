@@ -1,8 +1,10 @@
 import pytest
 
 from zookeeper.core.component import component, configure
-from zookeeper.core.field import ComponentField, Field
+from zookeeper.core.field import ComponentField, Field  # type: ignore
 from zookeeper.core.partial_component import PartialComponent
+
+# pytype: disable=invalid-annotation
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@ from typing import List, Optional
 import pytest
 
 from zookeeper.core.component import component
-from zookeeper.core.field import ComponentField, Field
+from zookeeper.core.field import ComponentField, Field  # type: ignore
 from zookeeper.core.partial_component import PartialComponent
 
 
