@@ -126,7 +126,7 @@ class Field(Generic[C, F]):
 
     def __repr__(self) -> str:
         if not self._registered:
-            return f"<Unregistered Field>"
+            return "<Unregistered Field>"
         return (
             f"<Field '{self.name}' of {self.host_component_class.__name__} with type "
             f"{self.type}>"

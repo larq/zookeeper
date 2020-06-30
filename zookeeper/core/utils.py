@@ -10,7 +10,7 @@ import typeguard
 # A sentinel class/object for missing default values.
 class Missing:
     def __repr__(self):
-        return f"<missing>"
+        return "<missing>"
 
 
 missing = Missing()
