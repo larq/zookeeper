@@ -5,7 +5,7 @@ from typing import Dict, Optional, Tuple, Union
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from zookeeper.core.field import Field
+from zookeeper.core.field import Field  # type: ignore
 
 
 def pass_training_kwarg(function, training=False):

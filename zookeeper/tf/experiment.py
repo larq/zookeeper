@@ -2,7 +2,7 @@ from typing import Optional, Sequence, Union
 
 from tensorflow import keras
 
-from zookeeper.core.field import ComponentField, Field
+from zookeeper.core.field import ComponentField, Field  # type: ignore
 from zookeeper.tf.dataset import Dataset
 from zookeeper.tf.preprocessing import Preprocessing
 

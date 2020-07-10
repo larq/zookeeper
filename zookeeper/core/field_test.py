@@ -25,12 +25,12 @@ def test_no_default():
     class A:
         foo: int = Field()
 
-    assert not A.foo.has_default  # type: ignore
+    assert not A.foo.has_default
 
     with pytest.raises(
         AttributeError, match="Field 'foo' has no default or configured value"
     ):
-        A.foo.get_default(A())  # type: ignore
+        A.foo.get_default(A())
 
 
 def test_immutable_default():
@@ -62,11 +62,11 @@ def test_factory_default():
 
     instance = A()
 
-    assert A.foo.has_default  # type: ignore
-    assert A.foo.get_default(instance) == 7  # type: ignore
+    assert A.foo.has_default
+    assert A.foo.get_default(instance) == 7
 
-    assert A.bar.has_default  # type: ignore
-    bar_default = A.bar.get_default(instance)  # type: ignore
+    assert A.bar.has_default
+    bar_default = A.bar.get_default(instance)
     assert isinstance(bar_default, list)
     assert bar_default[0] == 2
 
@@ -92,10 +92,10 @@ def test_decorated_field():
 
     instance = A()
 
-    assert A.foo.has_default  # type: ignore
+    assert A.foo.has_default
     assert A.foo.get_default(instance) == 3.14
 
-    assert A.bar.has_default  # type: ignore
+    assert A.bar.has_default
     assert A.bar.get_default(instance) == 36
 
 
@@ -156,29 +156,29 @@ def test_component_field_no_default():
     class A:
         foo: AbstractClass = ComponentField()
 
-    assert not A.foo.has_default  # type: ignore
+    assert not A.foo.has_default
 
     with pytest.raises(
         AttributeError,
         match="ComponentField 'foo' has no default or configured component class.",
     ):
-        A.foo.get_default(A())  # type: ignore
+        A.foo.get_default(A())
 
 
 def test_component_field_component_class_default():
     class A:
         foo: AbstractClass = ComponentField(ConcreteComponent)
 
-    assert A.foo.has_default  # type: ignore
-    assert isinstance(A.foo.get_default(A()), ConcreteComponent)  # type: ignore
+    assert A.foo.has_default
+    assert isinstance(A.foo.get_default(A()), ConcreteComponent)
 
 
 def test_component_field_partial_component_default():
     class A:
         foo: AbstractClass = ComponentField(PartialComponent(ConcreteComponent, a=5))
 
-    assert A.foo.has_default  # type: ignore
-    default_value = A.foo.get_default(A())  # type: ignore
+    assert A.foo.has_default
+    default_value = A.foo.get_default(A())
     assert isinstance(default_value, ConcreteComponent)
     assert default_value.a == 5
 
@@ -190,8 +190,8 @@ def test_component_field_kwargs():
     class A:
         foo: AbstractClass = ComponentField(ConcreteComponent, a=5)
 
-    assert A.foo.has_default  # type: ignore
-    default_value = A.foo.get_default(A())  # type: ignore
+    assert A.foo.has_default
+    default_value = A.foo.get_default(A())
     assert isinstance(default_value, ConcreteComponent)
     assert default_value.a == 5
 

@@ -32,13 +32,13 @@ def test_init_error_on_non_component():
         TypeError,
         match="The class passed to `PartialComponent` must be a component class.",
     ):
-        PartialComponent(2.71, a=3)  # type: ignore
+        PartialComponent(2.71, a=3)
 
     with pytest.raises(
         TypeError,
         match="The class passed to `PartialComponent` must be a component class.",
     ):
-        PartialComponent(lambda x: x * 2, a=3)  # type: ignore
+        PartialComponent(lambda x: x * 2, a=3)
 
     class Test:
         a: int
@@ -57,7 +57,7 @@ def test_init_error_on_non_component():
         TypeError,
         match="`PartialComponent` must be passed component classes, not component instances.",
     ):
-        PartialComponent(Test2(), a=3)  # type: ignore
+        PartialComponent(Test2(), a=3)
 
 
 def test_init_error_no_kwargs(ExampleComponentClasses):
