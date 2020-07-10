@@ -4,8 +4,8 @@ from zookeeper.core.factory import factory
 
 
 def test_is_component_class():
-    assert not utils.is_component_class(5)  # type: ignore
-    assert not utils.is_component_class(lambda: "foo")  # type: ignore
+    assert not utils.is_component_class(5)
+    assert not utils.is_component_class(lambda: "foo")
 
     class A:
         pass

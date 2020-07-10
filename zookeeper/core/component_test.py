@@ -7,9 +7,7 @@ import pytest
 
 from zookeeper.core.component import component, configure
 from zookeeper.core.factory import factory
-from zookeeper.core.field import ComponentField, Field  # type: ignore
-
-# pytype: disable=invalid-annotation
+from zookeeper.core.field import ComponentField, Field
 
 
 @pytest.fixture
@@ -30,7 +28,7 @@ def test_non_class_decorate_error():
         TypeError, match="Only classes can be decorated with @component."
     ):
 
-        @component  # type: ignore
+        @component
         def fn():
             pass
 
