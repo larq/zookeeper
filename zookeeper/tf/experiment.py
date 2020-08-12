@@ -22,6 +22,6 @@ class Experiment:
     epochs: int = Field()
     batch_size: int = Field()
     loss: Optional[
-        Union[Sequence[Union[keras.losses.Loss, str]], keras.losses.Loss, str]
+        Union[Sequence[Union[keras.losses.Loss, str, None]], keras.losses.Loss, str]
     ] = Field()
     optimizer: Union[keras.optimizers.Optimizer, str] = Field()
