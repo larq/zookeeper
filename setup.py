@@ -18,7 +18,12 @@ setup(
     packages=find_packages(),
     license="Apache 2.0",
     python_requires=">=3.6",
-    install_requires=["click>=7.0", "tensorflow-datasets>=1.3.0", "typeguard>=2.5.1"],
+    install_requires=[
+        "click>=7.0",
+        "tensorflow-datasets>=1.3.0",
+        "typeguard>=2.5.1",
+        "importlib-metadata ~= 2.0 ; python_version<'3.8'",
+    ],
     extras_require={
         "tensorflow": ["tensorflow>=1.14.0"],
         "tensorflow_gpu": ["tensorflow-gpu>=1.14.0"],
