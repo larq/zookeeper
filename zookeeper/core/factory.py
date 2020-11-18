@@ -77,7 +77,9 @@ def factory(cls: Type):
         a: int = Field(3)
         f: int = ComponentField(F)
 
-    print(C().f)
+    c = C()
+    configure(c, {})
+    print(c.f)
 
     >> # Output
     >> 7
