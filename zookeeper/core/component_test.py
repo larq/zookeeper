@@ -284,34 +284,48 @@ def test_str_and_repr():
     """
 
     @component
-    class Child:
+    class Child1:
+        a: int = Field()
+
+    @component
+    class Child2:
         a: int = Field()
         b: str = Field()
         c: List[float] = Field()
         d: int = Field(allow_missing=True)
+        child_1: Child1 = ComponentField()
 
     @component
     class Parent:
         b: str = Field("bar")
-        child: Child = ComponentField(Child)
+        child_1: Child1 = ComponentField(Child1)
+        child_2: Child2 = ComponentField(Child2)
 
     p = Parent()
 
-    configure(p, {"child.a": 10, "b": "foo", "child.c": [1.5, -1.2]}, name="parent")
+    configure(
+        p,
+        {"child_1.a": 5, "child_2.a": 10, "b": "foo", "child_2.c": [1.5, -1.2]},
+        name="parent",
+    )
 
     assert (
         click.unstyle(repr(p))
-        == """Parent(b="foo", child=Child(a=10, b="foo", c=[1.5, -1.2], d=<missing>))"""
+        == """Parent(b="foo", child_1=Child1(a=5), child_2=Child2(a=10, b=<inherited value>, c=[1.5, -1.2], d=<missing>, child_1=<inherited component instance>))"""
     )
     assert (
         click.unstyle(str(p))
         == """Parent(
     b="foo",
-    child=Child(
+    child_1=Child1(
+        a=5
+    ),
+    child_2=Child2(
         a=10,
-        b="foo",
+        b=<inherited value>,
         c=[1.5, -1.2],
-        d=<missing>
+        d=<missing>,
+        child_1=<inherited component instance>
     )
 )"""
     )

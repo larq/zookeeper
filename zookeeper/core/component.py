@@ -79,7 +79,7 @@ print(c)
 
 import functools
 import inspect
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, Iterator, List, Optional, Type
 
 from zookeeper.core import utils
 from zookeeper.core.factory_registry import FACTORY_REGISTRY
@@ -226,9 +226,9 @@ def _wrap_getattribute(component_cls: Type) -> None:
 
 # Syntatic sugar around `__base_getattribute__`, similar to `getattr` for
 # calling `__getattribute__` in the standard library.
-def base_getattr(instance, name):
-    if utils.is_component_instance:
-        return instance.__class__.__base_getattribute__(instance, name)
+def base_getattr(instance, name: str):
+    if utils.is_component_instance(instance):
+        return instance.__class__.__base_getattribute__(instance, name)  # type: ignore
     return getattr(instance, name)
 
 
@@ -282,25 +282,7 @@ def _wrap_dir(component_cls: Type) -> None:
 INDENT = " " * 4
 
 
-def _field_key_val_str(key: str, value: Any, color: bool, single_line: bool) -> str:
-    if utils.is_component_instance(value):
-        if single_line:
-            value = repr(value)
-        else:
-            value = f"\n{INDENT}".join(str(value).split("\n"))
-    elif callable(value):
-        value = "<callable>"
-    elif isinstance(value, str):
-        value = f'"{value}"'
-
-    return f"{key}={value}" if color else f"{key}={value}"
-
-
-def __component_repr__(instance):
-    if not instance.__component_configured__:
-        return f"<Unconfigured component '{instance.__component_name__}' instance>"
-
-    field_strings = []
+def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[str]:
     for field_name, field in instance.__component_fields__.items():
         try:
             value = base_getattr(instance, field_name)
@@ -309,34 +291,45 @@ def __component_repr__(instance):
                 value = utils.missing
             else:
                 raise e from None
-        field_strings.append(
-            _field_key_val_str(field_name, value, color=False, single_line=True)
+
+        parent_instance = next(
+            utils.generate_component_ancestors_with_field(instance, field_name), None
         )
+        if parent_instance is not None:
+            is_inherited = base_getattr(parent_instance, field_name) == value  # type: ignore
+        else:
+            is_inherited = False
 
-    joined_str = ", ".join(field_strings)
+        if utils.is_component_instance(value):
+            if is_inherited:
+                value = "<inherited component instance>"
+            elif single_line:
+                value = repr(value)
+            else:
+                value = f"\n{INDENT}".join(str(value).split("\n"))
+        elif is_inherited:
+            value = "<inherited value>"
+        elif callable(value):
+            value = "<callable>"
+        elif isinstance(value, str):
+            value = f'"{value}"'
 
+        yield f"{field_name}={value}" if color else f"{field_name}={value}"
+
+
+def __component_repr__(instance):
+    if not instance.__component_configured__:
+        return f"<Unconfigured component '{instance.__component_name__}' instance>"
+    joined_str = ", ".join(_list_field_strings(instance, color=False, single_line=True))
     return f"{instance.__class__.__name__}({joined_str})"
 
 
 def __component_str__(instance):
     if not instance.__component_configured__:
         return f"<Unconfigured component '{instance.__component_name__}' instance>"
-
-    field_strings = []
-    for field_name, field in instance.__component_fields__.items():
-        try:
-            value = base_getattr(instance, field_name)
-        except AttributeError as e:
-            if field.allow_missing:
-                value = utils.missing
-            else:
-                raise e from None
-        field_strings.append(
-            _field_key_val_str(field_name, value, color=True, single_line=False)
-        )
-
-    joined_str = f",\n{INDENT}".join(field_strings)
-
+    joined_str = f",\n{INDENT}".join(
+        _list_field_strings(instance, color=True, single_line=False)
+    )
     return f"{instance.__class__.__name__}(\n{INDENT}{joined_str}\n)"
 
 
