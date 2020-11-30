@@ -3,7 +3,7 @@ from zookeeper.core.component import component, configure
 from zookeeper.core.factory import factory
 from zookeeper.core.field import ComponentField, Field
 from zookeeper.core.partial_component import PartialComponent
-from zookeeper.core.task import task
+from zookeeper.core.task import task, task_sequence
 
 __all__ = [
     "component",
@@ -14,4 +14,5 @@ __all__ = [
     "Field",
     "PartialComponent",
     "task",
+    "task_sequence",
 ]

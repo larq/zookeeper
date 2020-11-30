@@ -7,6 +7,7 @@ from zookeeper.core import (
     configure,
     factory,
     task,
+    task_sequence,
 )
 
 try:
@@ -26,4 +27,5 @@ __all__ = [
     "Field",
     "PartialComponent",
     "task",
+    "task_sequence",
 ]

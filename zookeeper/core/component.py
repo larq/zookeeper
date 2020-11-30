@@ -1,5 +1,4 @@
-"""
-Components are generic, modular classes designed to be easily configurable.
+"""Components are generic, modular classes designed to be easily configurable.
 
 Components have configurable fields, which can contain either generic Python
 objects or nested sub-components. These are declared with class-level Python
@@ -113,8 +112,7 @@ def _type_check_and_cache(instance, field: Field, result: Any) -> None:
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
-    """
-    The logic for this overriden `__getattribute__` is as follows:
+    """The logic for this overriden `__getattribute__` is as follows:
 
     During component instantiation, any values passed to `__init__` are stored
     in a dict on the instance `__component_instantiated_field_values__`. This
@@ -239,7 +237,10 @@ def _wrap_setattr(component_cls: Type) -> None:
     def wrapped_fn(instance, name, value):
         try:
             value_defined_on_class = getattr(component_cls, name)
-            if isinstance(value_defined_on_class, Field):
+            if (
+                isinstance(value_defined_on_class, Field)
+                and value_defined_on_class.__component_configured__
+            ):
                 raise ValueError(
                     "Setting component field values directly is prohibited. Use "
                     "Zookeeper component configuration to set field values."
@@ -339,9 +340,7 @@ def __component_str__(instance):
 
 
 def __component_init__(instance, **kwargs):
-    """
-    Accepts keyword-arguments corresponding to fields defined on the component.
-    """
+    """Accepts keyword-arguments corresponding to fields defined on the component."""
 
     # Use the `kwargs` to set field values.
     for name, value in kwargs.items():
@@ -459,9 +458,9 @@ def configure(
     conf: Dict[str, Any],
     name: Optional[str] = None,
     interactive: bool = False,
+    skip_subtasks: bool = False,
 ):
-    """
-    Configure the component instance with parameters from the `conf` dict.
+    """Configure the component instance with parameters from the `conf` dict.
 
     Configuration passed through `conf` takes precedence over and will
     overwrite any values already set on the instance - either class defaults
@@ -482,6 +481,8 @@ def configure(
 
     if name is not None:
         instance.__component_name__ = name
+
+    skipped_conf = {}
 
     # Set the correct value for each field.
     for field in instance.__component_fields__.values():
@@ -661,6 +662,18 @@ def configure(
         full_name = f"{instance.__component_name__}.{field.name}"
 
         if not sub_component_instance.__component_configured__:
+            # The configuration we use consists of any keys scoped to `field.name`.
+            field_name_scoped_conf = {
+                a[len(f"{field.name}.") :]: b
+                for a, b in conf.items()
+                if a.startswith(f"{field.name}.")
+            }
+
+            if skip_subtasks and getattr(sub_component_instance, "__is_task__", False):
+                # Skip configuring subtasks, they need to be configured manually
+                skipped_conf[field.name] = field_name_scoped_conf
+                continue
+
             # Set the component parent so that inherited fields function
             # correctly.
             sub_component_instance.__component_parent__ = instance
@@ -671,13 +684,7 @@ def configure(
                 instance.__component_fields_with_values_in_scope__
             )
 
-            # Configure the nested sub-component. The configuration we use
-            # consists of all any keys scoped to `field.name`.
-            field_name_scoped_conf = {
-                a[len(f"{field.name}.") :]: b
-                for a, b in conf.items()
-                if a.startswith(f"{field.name}.")
-            }
+            # Configure the nested sub-component.
             configure(
                 sub_component_instance,
                 field_name_scoped_conf,
@@ -689,3 +696,6 @@ def configure(
 
     if hasattr(instance.__class__, "__post_configure__"):
         instance.__post_configure__()
+
+    if skip_subtasks:
+        return skipped_conf
