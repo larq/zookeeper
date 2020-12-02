@@ -1,5 +1,4 @@
-"""
-Components are generic, modular classes designed to be easily configurable.
+"""Components are generic, modular classes designed to be easily configurable.
 
 Components have configurable fields, which can contain either generic Python
 objects or nested sub-components. These are declared with class-level Python
@@ -113,8 +112,7 @@ def _type_check_and_cache(instance, field: Field, result: Any) -> None:
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
-    """
-    The logic for this overriden `__getattribute__` is as follows:
+    """The logic for this overridden `__getattribute__` is as follows:
 
     During component instantiation, any values passed to `__init__` are stored
     in a dict on the instance `__component_instantiated_field_values__`. This
@@ -239,7 +237,10 @@ def _wrap_setattr(component_cls: Type) -> None:
     def wrapped_fn(instance, name, value):
         try:
             value_defined_on_class = getattr(component_cls, name)
-            if isinstance(value_defined_on_class, Field):
+            if (
+                isinstance(value_defined_on_class, Field)
+                and value_defined_on_class.__component_configured__
+            ):
                 raise ValueError(
                     "Setting component field values directly is prohibited. Use "
                     "Zookeeper component configuration to set field values."
@@ -339,9 +340,7 @@ def __component_str__(instance):
 
 
 def __component_init__(instance, **kwargs):
-    """
-    Accepts keyword-arguments corresponding to fields defined on the component.
-    """
+    """Accepts keyword-arguments corresponding to fields defined on the component."""
 
     # Use the `kwargs` to set field values.
     for name, value in kwargs.items():
@@ -366,6 +365,44 @@ def __component_init__(instance, **kwargs):
         for field in instance.__component_fields__.values()
         if field.has_default
     ) | set(kwargs)
+
+
+####################################
+# Configuring the child components #
+###################################
+
+
+def __configure_children__(instance, conf):
+    for field_name, field_config in conf.items():
+        configure(getattr(instance, field_name), field_config)
+
+
+def __default_post_configure__(instance, conf):
+    print(conf)
+    instance.__configure_children__(conf)
+
+
+def _wrap_post_configure(component_cls: Type) -> None:
+    # Assert that all child components are configured after __post_configure__ is run
+    fn = component_cls.__post_configure__  # type: ignore
+
+    @functools.wraps(fn)
+    def wrapped_fn(instance, conf) -> None:
+        fn(instance, conf)
+        for field in instance.__component_fields__.values():
+            if not isinstance(field, ComponentField):
+                continue
+
+            child = base_getattr(instance, field.name)
+            if not (child.__component_configured__):
+                raise ValueError(
+                    f"Component {child.__component_name__} remains unconfigured after "
+                    f"calling `{component_cls.__component_name__}.__post_configure__`! "
+                    f"Make sure to call `self.__configure_children__(conf)` or manually "
+                    f"call `configure(self.{field.name}, conf['{field.name}'])`."
+                )
+
+    component_cls.__post_configure__ = wrapped_fn
 
 
 ######################
@@ -401,12 +438,15 @@ def component(cls: Type):
                 "method."
             )
         call_args = inspect.signature(cls.__post_configure__).parameters
-        if len(call_args) > 1 or len(call_args) == 1 and "self" not in call_args:
+        if len(call_args) != 2 or "self" not in call_args or "conf" not in call_args:
             raise TypeError(
                 "The `__post_configure__` method of a @component class must take no "
-                f"arguments except `self`, but `{cls.__name__}.__post_configure__` "
+                "arguments except `self` and `conf`, but "
+                f"`{cls.__name__}.__post_configure__` "
                 f"accepts arguments {tuple(name for name in call_args)}."
             )
+    else:
+        cls.__post_configure__ = __default_post_configure__
 
     # Populate `__component_fields__` with all fields defined on this class and
     # all superclasses. We have to go through the MRO chain and collect them in
@@ -442,6 +482,10 @@ def component(cls: Type):
     _wrap_delattr(cls)
     _wrap_dir(cls)
 
+    # Wrap `__post_configure__` to ensure all children are configured correctly.
+    _wrap_post_configure(cls)
+    cls.__configure_children__ = __configure_children__
+
     # Components should have nice `__str__` and `__repr__` methods.
     cls.__str__ = __component_str__
     cls.__repr__ = __component_repr__
@@ -460,8 +504,7 @@ def configure(
     name: Optional[str] = None,
     interactive: bool = False,
 ):
-    """
-    Configure the component instance with parameters from the `conf` dict.
+    """Configure the component instance with parameters from the `conf` dict.
 
     Configuration passed through `conf` takes precedence over and will
     overwrite any values already set on the instance - either class defaults
@@ -644,6 +687,7 @@ def configure(
             raise error
 
     # Recursively configure any sub-components.
+    child_confs = {}
     for field in instance.__component_fields__.values():
         if not isinstance(field, ComponentField):
             continue
@@ -658,12 +702,22 @@ def configure(
         if not utils.is_component_instance(sub_component_instance):
             continue
 
-        full_name = f"{instance.__component_name__}.{field.name}"
-
         if not sub_component_instance.__component_configured__:
+            # The configuration we use consists of any keys scoped to `field.name`.
+            child_confs[field.name] = {
+                a[len(f"{field.name}.") :]: b
+                for a, b in conf.items()
+                if a.startswith(f"{field.name}.")
+            }
+
             # Set the component parent so that inherited fields function
             # correctly.
             sub_component_instance.__component_parent__ = instance
+
+            # Update the name of the child component to reflect the current instance
+            # being its parent.
+            full_name = f"{instance.__component_name__}.{field.name}"
+            sub_component_instance.__component_name__ = full_name
 
             # Extend the field names in scope. All fields with values defined in
             # the scope of the parent are also accessible in the child.
@@ -671,21 +725,5 @@ def configure(
                 instance.__component_fields_with_values_in_scope__
             )
 
-            # Configure the nested sub-component. The configuration we use
-            # consists of all any keys scoped to `field.name`.
-            field_name_scoped_conf = {
-                a[len(f"{field.name}.") :]: b
-                for a, b in conf.items()
-                if a.startswith(f"{field.name}.")
-            }
-            configure(
-                sub_component_instance,
-                field_name_scoped_conf,
-                name=full_name,
-                interactive=interactive,
-            )
-
     instance.__component_configured__ = True
-
-    if hasattr(instance.__class__, "__post_configure__"):
-        instance.__post_configure__()
+    instance.__post_configure__(child_confs)

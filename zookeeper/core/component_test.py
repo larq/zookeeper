@@ -21,9 +21,7 @@ def ExampleComponentClass():
 
 
 def test_non_class_decorate_error():
-    """
-    An error should be raised when attempting to decorate a non-class object.
-    """
+    """An error should be raised when attempting to decorate a non-class object."""
     with pytest.raises(
         TypeError, match="Only classes can be decorated with @component."
     ):
@@ -34,9 +32,7 @@ def test_non_class_decorate_error():
 
 
 def test_abstract_class_decorate_error():
-    """
-    An error should be raised when attempting to decorate an abstract class.
-    """
+    """An error should be raised when attempting to decorate an abstract class."""
     with pytest.raises(
         TypeError, match="Abstract classes cannot be decorated with @component."
     ):
@@ -49,10 +45,8 @@ def test_abstract_class_decorate_error():
 
 
 def test_init_decorate_error():
-    """
-    An error should be raised when attempting to decorate a class with an
-    `__init__` method.
-    """
+    """An error should be raised when attempting to decorate a class with an `__init__`
+    method."""
     with pytest.raises(
         TypeError,
         match="Component classes must not define a custom `__init__` method.",
@@ -66,11 +60,9 @@ def test_init_decorate_error():
 
 
 def test_no_init(ExampleComponentClass):
-    """
-    If the decorated class does not have an `__init__` method, the decorated
-    class should define an `__init__` which accepts kwargs to set field values,
-    and raises appropriate arguments when other values are passed.
-    """
+    """If the decorated class does not have an `__init__` method, the decorated class
+    should define an `__init__` which accepts kwargs to set field values, and raises
+    appropriate arguments when other values are passed."""
 
     x = ExampleComponentClass(a=2)
     assert x.a == 2
@@ -83,8 +75,7 @@ def test_no_init(ExampleComponentClass):
     # Verify that arguments are disallowed (the 1 positional argument the error
     # message refers to is `self`).
     with pytest.raises(
-        TypeError,
-        match=r"takes 1 positional argument but 2 were given",
+        TypeError, match=r"takes 1 positional argument but 2 were given",
     ):
         ExampleComponentClass("foobar")
 
@@ -157,10 +148,8 @@ def test_configure_scoped_override_field_values():
 
 
 def test_configure_automatically_instantiate_subcomponent():
-    """
-    If there is only a single component subclass of a field type, an instance of
-    the class should be automatically instantiated during configuration.
-    """
+    """If there is only a single component subclass of a field type, an instance of the
+    class should be automatically instantiated during configuration."""
 
     class AbstractChild:
         pass
@@ -197,10 +186,8 @@ def test_configure_automatically_instantiate_subcomponent():
 
 
 def test_configure_non_interactive_missing_field_value(ExampleComponentClass):
-    """
-    When not configuring interactively, an error should be raised if a field has
-    neither a default nor a configured value.
-    """
+    """When not configuring interactively, an error should be raised if a field has
+    neither a default nor a configured value."""
 
     with pytest.raises(
         ValueError,
@@ -210,10 +197,8 @@ def test_configure_non_interactive_missing_field_value(ExampleComponentClass):
 
 
 def test_configure_interactive_prompt_missing_field_value(ExampleComponentClass):
-    """
-    When configuring interactively, fields without default or configured values
-    should prompt for value input through the CLI.
-    """
+    """When configuring interactively, fields without default or configured values
+    should prompt for value input through the CLI."""
 
     x = ExampleComponentClass()
     a_value = 42
@@ -227,11 +212,9 @@ def test_configure_interactive_prompt_missing_field_value(ExampleComponentClass)
 
 
 def test_configure_interactive_prompt_for_subcomponent_choice():
-    """
-    When configuring interactively, sub-component fields without default or
-    configured values should prompt for a choice of subcomponents to instantiate
-    through the CLI.
-    """
+    """When configuring interactively, sub-component fields without default or
+    configured values should prompt for a choice of subcomponents to instantiate through
+    the CLI."""
 
     class AbstractChild:
         pass
@@ -278,10 +261,8 @@ def test_configure_interactive_prompt_for_subcomponent_choice():
 
 
 def test_str_and_repr():
-    """
-    `__str__` and `__repr__` should give formatted strings that represent nested
-    components nicely.
-    """
+    """`__str__` and `__repr__` should give formatted strings that represent nested
+    components nicely."""
 
     @component
     class Child1:
@@ -472,28 +453,39 @@ def test_component_post_configure():
 
     with pytest.raises(
         TypeError,
-        match="The `__post_configure__` method of a @component class must take no arguments except `self`",
+        match="The `__post_configure__` method of a @component class must take no arguments except `self` and `conf`",
     ):
 
         @component
         class B:
-            def __post_configure__(self, x):
+            def __post_configure__(self):
+                pass
+
+    with pytest.raises(
+        TypeError,
+        match="The `__post_configure__` method of a @component class must take no arguments except `self` and `conf`",
+    ):
+
+        @component
+        class C:
+            def __post_configure__(self, conf, additional):
                 pass
 
     # This definition should succeed.
     @component
-    class C:
+    class D:
         a: int = Field(0)
         b: float = Field(3.14)
 
-        def __post_configure__(self):
+        def __post_configure__(self, conf):
             self.c = self.a + self.b
+            self.__configure_children__(conf)
 
-    c = C()
+    d = D()
 
-    configure(c, {"a": 1, "b": -3.14})
+    configure(d, {"a": 1, "b": -3.14})
 
-    assert c.c == 1 - 3.14
+    assert d.c == 1 - 3.14
 
 
 def test_component_configure_error_non_existant_key():

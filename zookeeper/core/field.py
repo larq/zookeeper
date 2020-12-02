@@ -11,9 +11,8 @@ F = TypeVar("F")
 
 
 class Field(Generic[C, F]):
-    """
-    A configurable field for Zookeeper components. Fields must be typed, may
-    take default values, and are configurable through the CLI.
+    """A configurable field for Zookeeper components. Fields must be typed, may take
+    default values, and are configurable through the CLI.
 
     This class is not appropriate for nesting child sub-components; for this,
     use `ComponentField` instead.
@@ -176,8 +175,7 @@ class Field(Generic[C, F]):
 
 
 class ComponentField(Field, Generic[C, F]):
-    """
-    A Zookeeper field for nesting child sub-components.
+    """A Zookeeper field for nesting child sub-components.
 
     `ComponentField`s must be defined with a type annotation: a Python class
     from which all possible component instances for the field must inherit.
