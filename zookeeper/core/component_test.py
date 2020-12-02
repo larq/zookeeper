@@ -75,7 +75,8 @@ def test_no_init(ExampleComponentClass):
     # Verify that arguments are disallowed (the 1 positional argument the error
     # message refers to is `self`).
     with pytest.raises(
-        TypeError, match=r"takes 1 positional argument but 2 were given",
+        TypeError,
+        match=r"takes 1 positional argument but 2 were given",
     ):
         ExampleComponentClass("foobar")
 
