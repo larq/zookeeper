@@ -279,7 +279,7 @@ def _wrap_configure(component_cls: Type) -> None:
 
         @functools.wraps(fn)
         def wrapped_configure(instance, *args, **kwargs):
-            fn(*args, **kwargs)
+            fn(instance, *args, **kwargs)
             assert instance.__component_configured__  # TODO: pretty error message
 
         component_cls.__configure__ = wrapped_configure
