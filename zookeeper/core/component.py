@@ -297,9 +297,7 @@ def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[st
         )
         if value is not utils.missing and parent_instance is not None:
             # Suppress warning for comparing literals, e.g. `5 is 6`.
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                is_inherited = base_getattr(parent_instance, field_name) is value  # type: ignore
+            is_inherited = base_getattr(parent_instance, field_name) is value  # type: ignore
         else:
             is_inherited = False
 
