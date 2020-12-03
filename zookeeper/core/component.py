@@ -80,6 +80,8 @@ import functools
 import inspect
 from typing import Any, Dict, Iterator, List, Optional, Type
 
+from tensorflow import is_tensor
+
 from zookeeper.core import utils
 from zookeeper.core.factory_registry import FACTORY_REGISTRY
 from zookeeper.core.field import ComponentField, Field
@@ -290,6 +292,8 @@ def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[st
         except AttributeError as e:
             if field.allow_missing:
                 value = utils.missing
+                yield f"{field_name}={value}" if color else f"{field_name}={value}"
+                continue
             else:
                 raise e from None
 
@@ -297,7 +301,11 @@ def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[st
             utils.generate_component_ancestors_with_field(instance, field_name), None
         )
         if parent_instance is not None:
-            is_inherited = base_getattr(parent_instance, field_name) == value  # type: ignore
+            parent_value = base_getattr(parent_instance, field_name)
+            if is_tensor(parent_value):
+                is_inherited = parent_value is value
+            else:
+                is_inherited = base_getattr(parent_instance, field_name) == value  # type: ignore
         else:
             is_inherited = False
 
