@@ -296,7 +296,6 @@ def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[st
             utils.generate_component_ancestors_with_field(instance, field_name), None
         )
         if value is not utils.missing and parent_instance is not None:
-            # Suppress warning for comparing literals, e.g. `5 is 6`.
             is_inherited = base_getattr(parent_instance, field_name) is value  # type: ignore
         else:
             is_inherited = False
