@@ -79,6 +79,7 @@ print(c)
 
 import functools
 import inspect
+import warnings
 from typing import Any, Dict, Iterator, List, Optional, Type
 
 from zookeeper.core import utils
@@ -289,16 +290,16 @@ def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[st
         except AttributeError as e:
             if field.allow_missing:
                 value = utils.missing
-                yield f"{field_name}={value}" if color else f"{field_name}={value}"
-                continue
             else:
                 raise e from None
 
         parent_instance = next(
             utils.generate_component_ancestors_with_field(instance, field_name), None
         )
-        if parent_instance is not None:
-            is_inherited = base_getattr(parent_instance, field_name) is value  # type: ignore
+        if value is not utils.missing and parent_instance is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                is_inherited = base_getattr(parent_instance, field_name) is value  # type: ignore
         else:
             is_inherited = False
 
