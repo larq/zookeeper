@@ -1,5 +1,4 @@
-"""
-Components are generic, modular classes designed to be easily configurable.
+"""Components are generic, modular classes designed to be easily configurable.
 
 Components have configurable fields, which can contain either generic Python
 objects or nested sub-components. These are declared with class-level Python
@@ -113,8 +112,7 @@ def _type_check_and_cache(instance, field: Field, result: Any) -> None:
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
-    """
-    The logic for this overriden `__getattribute__` is as follows:
+    """The logic for this overriden `__getattribute__` is as follows:
 
     During component instantiation, any values passed to `__init__` are stored
     in a dict on the instance `__component_instantiated_field_values__`. This
@@ -240,10 +238,13 @@ def _wrap_setattr(component_cls: Type) -> None:
         try:
             value_defined_on_class = getattr(component_cls, name)
             if isinstance(value_defined_on_class, Field):
-                raise ValueError(
-                    "Setting component field values directly is prohibited. Use "
-                    "Zookeeper component configuration to set field values."
-                )
+                if instance.__component_configured__:
+                    raise ValueError(
+                        "Setting component field values directly is prohibited. Use "
+                        "Zookeeper component configuration to set field values."
+                    )
+                instance.__component_instantiated_field_values__[name] = value
+
         except AttributeError:
             pass
         return fn(instance, name, value)
@@ -271,6 +272,25 @@ def _wrap_dir(component_cls: Type) -> None:
         return list(set(fn(instance)) | set(instance.__component_fields__.keys()))
 
     component_cls.__dir__ = wrapped_fn
+
+
+def _wrap_configure(component_cls: Type) -> None:
+    if hasattr(component_cls, "__configure__"):
+        fn = component_cls.__configure__
+
+        @functools.wrap(fn)
+        def wrapped_configure(instance, *args, **kwargs):
+            fn(*args, **kwargs)
+            assert instance.__component_configured__  # TODO: pretty error message
+
+        component_cls.__configure__ = wrapped_fn
+
+    else:
+        component_cls.__configure__ = __component__configure__
+
+
+def __component__configure__(instance, *args, **kwargs):
+    configure(instance, *args, **kwargs)
 
 
 #################################
@@ -339,9 +359,7 @@ def __component_str__(instance):
 
 
 def __component_init__(instance, **kwargs):
-    """
-    Accepts keyword-arguments corresponding to fields defined on the component.
-    """
+    """Accepts keyword-arguments corresponding to fields defined on the component."""
 
     # Use the `kwargs` to set field values.
     for name, value in kwargs.items():
@@ -441,6 +459,7 @@ def component(cls: Type):
     _wrap_setattr(cls)
     _wrap_delattr(cls)
     _wrap_dir(cls)
+    _wrap_configure(cls)
 
     # Components should have nice `__str__` and `__repr__` methods.
     cls.__str__ = __component_str__
@@ -460,8 +479,7 @@ def configure(
     name: Optional[str] = None,
     interactive: bool = False,
 ):
-    """
-    Configure the component instance with parameters from the `conf` dict.
+    """Configure the component instance with parameters from the `conf` dict.
 
     Configuration passed through `conf` takes precedence over and will
     overwrite any values already set on the instance - either class defaults
@@ -678,11 +696,8 @@ def configure(
                 for a, b in conf.items()
                 if a.startswith(f"{field.name}.")
             }
-            configure(
-                sub_component_instance,
-                field_name_scoped_conf,
-                name=full_name,
-                interactive=interactive,
+            sub_component_instance.__configure__(
+                field_name_scoped_conf, name=full_name, interactive=interactive,
             )
 
     instance.__component_configured__ = True

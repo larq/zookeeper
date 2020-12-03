@@ -3,19 +3,17 @@ import inspect
 import click
 
 from zookeeper.core.cli import ConfigParam, cli
-from zookeeper.core.component import component, configure
+from zookeeper.core.component import component
 from zookeeper.core.utils import convert_to_snake_case
 
 
 def task(cls):
-    """
-    A decorator which turns a class into a Zookeeper task, which is a Zookeeper
+    """A decorator which turns a class into a Zookeeper task, which is a Zookeeper
     method with an argument-less `run` method.
 
-    Tasks are runnable through the CLI. Upon execution, the task is instantiated
-    and all component fields are configured using configuration passed as CLI
-    arguments of the form `field_name=field_value`, and then the `run` method is
-    called.
+    Tasks are runnable through the CLI. Upon execution, the task is instantiated and all
+    component fields are configured using configuration passed as CLI arguments of the
+    form `field_name=field_value`, and then the `run` method is called.
     """
     cls = component(cls)
 
@@ -55,7 +53,7 @@ def task(cls):
     def command(config, interactive):
         config = {k: v for k, v in config}
         task_instance = cls()
-        configure(task_instance, config, interactive=interactive)
+        task_instance.__configure__(config, interactive=interactive)
         task_instance.run()
 
     return cls
