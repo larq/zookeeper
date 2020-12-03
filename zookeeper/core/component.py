@@ -79,7 +79,6 @@ print(c)
 
 import functools
 import inspect
-import warnings
 from typing import Any, Dict, Iterator, List, Optional, Type
 
 from zookeeper.core import utils
