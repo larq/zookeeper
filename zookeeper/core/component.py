@@ -273,6 +273,25 @@ def _wrap_dir(component_cls: Type) -> None:
     component_cls.__dir__ = wrapped_fn
 
 
+def _wrap_configure(component_cls: Type) -> None:
+    if hasattr(component_cls, "__configure__"):
+        fn = component_cls.__configure__
+
+        @functools.wrap(fn)
+        def wrapped_configure(instance, *args, **kwargs):
+            fn(*args, **kwargs)
+            assert instance.__component_configured__  # TODO: pretty error message
+
+        component_cls.__configure__ = wrapped_configure
+
+    else:
+        component_cls.__configure__ = __component__configure__
+
+
+def __component__configure__(instance, *args, **kwargs):
+    configure(instance, *args, **kwargs)
+
+
 #################################
 # Pretty string representations #
 #################################
@@ -441,6 +460,7 @@ def component(cls: Type):
     _wrap_setattr(cls)
     _wrap_delattr(cls)
     _wrap_dir(cls)
+    _wrap_configure(cls)
 
     # Components should have nice `__str__` and `__repr__` methods.
     cls.__str__ = __component_str__
@@ -678,8 +698,7 @@ def configure(
                 for a, b in conf.items()
                 if a.startswith(f"{field.name}.")
             }
-            configure(
-                sub_component_instance,
+            sub_component_instance.__configure__(
                 field_name_scoped_conf,
                 name=full_name,
                 interactive=interactive,
