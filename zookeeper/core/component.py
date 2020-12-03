@@ -277,7 +277,7 @@ def _wrap_configure(component_cls: Type) -> None:
     if hasattr(component_cls, "__configure__"):
         fn = component_cls.__configure__
 
-        @functools.wrap(fn)
+        @functools.wraps(fn)
         def wrapped_configure(instance, *args, **kwargs):
             fn(*args, **kwargs)
             assert instance.__component_configured__  # TODO: pretty error message
