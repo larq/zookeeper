@@ -60,10 +60,8 @@ def generate_component_subclasses(cls: Type) -> Iterator[Type]:
 def generate_component_ancestors_with_field(
     instance: Any, field_name, include_instance: bool = False
 ) -> Iterator[Any]:
-    """
-    A utility method to generate from closest to furthest each ancestor
-    component instance with a field called `field_name`.
-    """
+    """A utility method to generate from closest to furthest each ancestor component
+    instance with a field called `field_name`."""
     if include_instance:
         parent = instance
     else:
@@ -114,9 +112,9 @@ def wrap_in_callable(value: T) -> Callable[[], T]:
 
 
 def is_immutable(value: Any) -> bool:
-    """
-    Decide the immutability of `value`. Recurses a single level if `value` is a
-    tuple, but does not recurse infinitely.
+    """Decide the immutability of `value`.
+
+    Recurses a single level if `value` is a tuple, but does not recurse infinitely.
     """
     return (
         value is None

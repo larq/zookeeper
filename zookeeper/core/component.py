@@ -1,5 +1,4 @@
-"""
-Components are generic, modular classes designed to be easily configurable.
+"""Components are generic, modular classes designed to be easily configurable.
 
 Components have configurable fields, which can contain either generic Python
 objects or nested sub-components. These are declared with class-level Python
@@ -113,8 +112,7 @@ def _type_check_and_cache(instance, field: Field, result: Any) -> None:
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
-    """
-    The logic for this overriden `__getattribute__` is as follows:
+    """The logic for this overriden `__getattribute__` is as follows:
 
     During component instantiation, any values passed to `__init__` are stored
     in a dict on the instance `__component_instantiated_field_values__`. This
@@ -361,9 +359,7 @@ def __component_str__(instance):
 
 
 def __component_init__(instance, **kwargs):
-    """
-    Accepts keyword-arguments corresponding to fields defined on the component.
-    """
+    """Accepts keyword-arguments corresponding to fields defined on the component."""
 
     # Use the `kwargs` to set field values.
     for name, value in kwargs.items():
@@ -483,8 +479,7 @@ def configure(
     name: Optional[str] = None,
     interactive: bool = False,
 ):
-    """
-    Configure the component instance with parameters from the `conf` dict.
+    """Configure the component instance with parameters from the `conf` dict.
 
     Configuration passed through `conf` takes precedence over and will
     overwrite any values already set on the instance - either class defaults
@@ -702,9 +697,7 @@ def configure(
                 if a.startswith(f"{field.name}.")
             }
             sub_component_instance.__configure__(
-                field_name_scoped_conf,
-                name=full_name,
-                interactive=interactive,
+                field_name_scoped_conf, name=full_name, interactive=interactive,
             )
 
     instance.__component_configured__ = True
