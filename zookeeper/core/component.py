@@ -79,6 +79,7 @@ print(c)
 
 import functools
 import inspect
+from itertools import zip_longest
 from typing import Any, Dict, Iterator, List, Optional, Type
 
 from zookeeper.core import utils
@@ -275,12 +276,48 @@ def _wrap_dir(component_cls: Type) -> None:
 
 def _wrap_configure(component_cls: Type) -> None:
     if hasattr(component_cls, "__configure__"):
+        if not callable(component_cls.__configure__):
+            raise TypeError(
+                "The `__configure__` attribute of a @component class must be a "
+                "method."
+            )
+        call_args = inspect.signature(component_cls.__configure__).parameters
+        configure_args = inspect.signature(configure).parameters
+
+        error_message = (
+            "The `__configure__` method of a @component class must match the arguments "
+            f"of `configure()`, but `{component_cls.__name__}.__configure__` "
+            f"accepts arguments {tuple(name for name in call_args)}."
+        )
+
+        for arg in call_args:
+            if arg in ["self", "args", "kwargs"]:
+                continue
+            if arg not in configure_args:
+                raise TypeError(error_message)
+
+        for arg in configure_args:
+            if arg == "instance":
+                arg == "self"
+            if (
+                arg not in call_args
+                and "args" not in call_args
+                and "kwargs" not in call_args
+            ):
+                raise TypeError(error_message)
+
         fn = component_cls.__configure__
 
         @functools.wraps(fn)
         def wrapped_configure(instance, *args, **kwargs):
             fn(instance, *args, **kwargs)
-            assert instance.__component_configured__  # TODO: pretty error message
+            if not instance.__component_configured__:
+                raise ValueError(
+                    f"`{instance.__component_name__}` remains unconfigured after "
+                    "calling __configure__! Make sure to call "
+                    "`configure(self, config, **kwargs)` at the end of this function."
+                )
+            assert instance.__component_configured__
 
         component_cls.__configure__ = wrapped_configure
 

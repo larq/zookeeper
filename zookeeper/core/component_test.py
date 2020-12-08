@@ -1,4 +1,5 @@
 import abc
+import re
 from typing import List, Tuple
 from unittest.mock import patch
 
@@ -644,3 +645,38 @@ def test_component_allow_missing_field_inherits_defaults():
     instance = Parent()
     configure(instance, {})
     assert instance.child.a == 5
+
+
+def test_component_configure_override():
+    @component
+    class A:
+        def __configure__(self, config, **kwargs):
+            pass
+
+    # Missing out "child" should cause an error.
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "`A` remains unconfigured after calling __configure__! Make sure to call"
+            " `configure(self, config, **kwargs)` at the end of this function."
+        ),
+    ):
+
+        instance = A()
+        instance.__configure__({})
+
+    @component
+    class B:
+        def __configure__(self, conf, **kwargs):
+            pass
+
+    # Missing out "child" should cause an error.
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "`A` remains unconfigured after calling __configure__! Make sure to call"
+            " `configure(self, config, **kwargs)` at the end of this function."
+        ),
+    ):
+
+        instance = B()
