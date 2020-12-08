@@ -247,6 +247,7 @@ def _wrap_setattr(component_cls: Type) -> None:
                         " values."
                     )
                 instance.__component_instantiated_field_values__[name] = value
+                return
         except AttributeError:
             pass
         return fn(instance, name, value)
