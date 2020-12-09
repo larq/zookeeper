@@ -240,10 +240,14 @@ def _wrap_setattr(component_cls: Type) -> None:
         try:
             value_defined_on_class = getattr(component_cls, name)
             if isinstance(value_defined_on_class, Field):
-                raise ValueError(
-                    "Setting component field values directly is prohibited. Use "
-                    "Zookeeper component configuration to set field values."
-                )
+                if instance.__component_configured__:
+                    raise ValueError(
+                        "Setting already configured component field values directly is "
+                        "prohibited. Use Zookeeper component configuration to set field"
+                        " values."
+                    )
+                instance.__component_instantiated_field_values__[name] = value
+                return
         except AttributeError:
             pass
         return fn(instance, name, value)
@@ -353,8 +357,8 @@ def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[st
         parent_instance = next(
             utils.generate_component_ancestors_with_field(instance, field_name), None
         )
-        if parent_instance is not None:
-            is_inherited = base_getattr(parent_instance, field_name) == value  # type: ignore
+        if value is not utils.missing and parent_instance is not None:
+            is_inherited = base_getattr(parent_instance, field_name) is value  # type: ignore
         else:
             is_inherited = False
 

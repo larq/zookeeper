@@ -703,3 +703,27 @@ def test_component_configure_override():
             __configure__ = "test"
 
         instance = D()
+
+
+def test_component_field_setattr():
+    @component
+    class A:
+        a: int = Field(6)
+        b: float = Field(allow_missing=True)
+
+    # Setting default values on fields before configuration is fine
+    instance = A()
+    instance.a = 3
+    instance.b = 5.0
+    configure(instance, {"a": 0})
+    assert instance.a == 0
+    assert instance.b == 5.0
+
+    # Setting values after configuration is prohibited
+    with pytest.raises(
+        ValueError,
+        match="Setting already configured component field values directly is "
+        "prohibited. Use Zookeeper component configuration to set field"
+        " values.",
+    ):
+        instance.a = 5
