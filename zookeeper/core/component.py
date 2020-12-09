@@ -79,7 +79,6 @@ print(c)
 
 import functools
 import inspect
-from itertools import zip_longest
 from typing import Any, Dict, Iterator, List, Optional, Type
 
 from zookeeper.core import utils
@@ -283,11 +282,16 @@ def _wrap_configure(component_cls: Type) -> None:
             )
         call_args = inspect.signature(component_cls.__configure__).parameters
         configure_args = inspect.signature(configure).parameters
+        configure_args = {
+            "self": configure_args["instance"],
+            **{k: v for k, v in configure_args.items() if not k == "instance"},
+        }
 
         error_message = (
             "The `__configure__` method of a @component class must match the arguments "
             f"of `configure()`, but `{component_cls.__name__}.__configure__` "
-            f"accepts arguments {tuple(name for name in call_args)}."
+            f"accepts arguments {tuple(name for name in call_args)}. Valid arguments: "
+            f"({', '.join(name for name in configure_args)}, *args, **kwargs)"
         )
 
         for arg in call_args:
@@ -297,8 +301,6 @@ def _wrap_configure(component_cls: Type) -> None:
                 raise TypeError(error_message)
 
         for arg in configure_args:
-            if arg == "instance":
-                arg == "self"
             if (
                 arg not in call_args
                 and "args" not in call_args
@@ -315,7 +317,7 @@ def _wrap_configure(component_cls: Type) -> None:
                 raise ValueError(
                     f"`{instance.__component_name__}` remains unconfigured after "
                     "calling __configure__! Make sure to call "
-                    "`configure(self, config, **kwargs)` at the end of this function."
+                    "`configure(self, conf, **kwargs)` at the end of this function."
                 )
             assert instance.__component_configured__
 

@@ -650,33 +650,56 @@ def test_component_allow_missing_field_inherits_defaults():
 def test_component_configure_override():
     @component
     class A:
-        def __configure__(self, config, **kwargs):
+        def __configure__(self, conf, **kwargs):
             pass
 
-    # Missing out "child" should cause an error.
+    # It doesn't call `configure`, so an error should be thrown.
     with pytest.raises(
         ValueError,
         match=re.escape(
             "`A` remains unconfigured after calling __configure__! Make sure to call"
-            " `configure(self, config, **kwargs)` at the end of this function."
+            " `configure(self, conf, **kwargs)` at the end of this function."
         ),
     ):
 
         instance = A()
         instance.__configure__({})
 
+    # This should pass
     @component
     class B:
-        def __configure__(self, conf, **kwargs):
-            pass
+        def __configure__(self, *args, **kwargs):
+            configure(self, *args, **kwargs)
 
-    # Missing out "child" should cause an error.
+    instance = B()
+
+    # This should not, since it doesn't take any additional args
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(
-            "`A` remains unconfigured after calling __configure__! Make sure to call"
-            " `configure(self, config, **kwargs)` at the end of this function."
+            "The `__configure__` method of a @component class must match the arguments "
+            "of `configure()`, but `C.__configure__` accepts arguments ('self',). "
+            "Valid arguments: (self, conf, name, interactive, *args, **kwargs)"
         ),
     ):
 
-        instance = B()
+        @component
+        class C:
+            def __configure__(self):
+                pass
+
+        instance = C()
+
+    # This also should not, since it isn't a function at all
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "The `__configure__` attribute of a @component class must be a method."
+        ),
+    ):
+
+        @component
+        class D:
+            __configure__ = "test"
+
+        instance = D()
