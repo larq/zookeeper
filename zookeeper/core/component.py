@@ -1,5 +1,4 @@
-"""
-Components are generic, modular classes designed to be easily configurable.
+"""Components are generic, modular classes designed to be easily configurable.
 
 Components have configurable fields, which can contain either generic Python
 objects or nested sub-components. These are declared with class-level Python
@@ -113,8 +112,7 @@ def _type_check_and_cache(instance, field: Field, result: Any) -> None:
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
-    """
-    The logic for this overriden `__getattribute__` is as follows:
+    """The logic for this overriden `__getattribute__` is as follows:
 
     During component instantiation, any values passed to `__init__` are stored
     in a dict on the instance `__component_instantiated_field_values__`. This
@@ -285,32 +283,25 @@ def _wrap_configure(component_cls: Type) -> None:
                 "method."
             )
         call_args = inspect.signature(component_cls.__configure__).parameters
-        configure_args = inspect.signature(configure).parameters
-        configure_args = {
-            "self": configure_args["instance"],
-            **{k: v for k, v in configure_args.items() if not k == "instance"},
-        }
+        configure_args = frozenset(
+            name if name != "instance" else "self"
+            for name in inspect.signature(configure).parameters
+        )
 
         error_message = (
             "The `__configure__` method of a @component class must match the arguments "
             f"of `configure()`, but `{component_cls.__name__}.__configure__` "
             f"accepts arguments {tuple(name for name in call_args)}. Valid arguments: "
-            f"({', '.join(name for name in configure_args)}, *args, **kwargs)"
+            f"({', '.join(name for name in configure_args)})"
         )
 
-        for arg in call_args:
-            if arg in ["self", "args", "kwargs"]:
-                continue
-            if arg not in configure_args:
-                raise TypeError(error_message)
-
-        for arg in configure_args:
+        for arg_name, arg_param in call_args.items():
             if (
-                arg not in call_args
-                and "args" not in call_args
-                and "kwargs" not in call_args
+                arg_param.kind in (arg_param.VAR_POSITIONAL, arg_param.VAR_KEYWORD)
+                or arg_name in configure_args
             ):
-                raise TypeError(error_message)
+                continue
+            raise TypeError(error_message)
 
         fn = component_cls.__configure__
 
@@ -400,9 +391,7 @@ def __component_str__(instance):
 
 
 def __component_init__(instance, **kwargs):
-    """
-    Accepts keyword-arguments corresponding to fields defined on the component.
-    """
+    """Accepts keyword-arguments corresponding to fields defined on the component."""
 
     # Use the `kwargs` to set field values.
     for name, value in kwargs.items():
@@ -522,8 +511,7 @@ def configure(
     name: Optional[str] = None,
     interactive: bool = False,
 ):
-    """
-    Configure the component instance with parameters from the `conf` dict.
+    """Configure the component instance with parameters from the `conf` dict.
 
     Configuration passed through `conf` takes precedence over and will
     overwrite any values already set on the instance - either class defaults

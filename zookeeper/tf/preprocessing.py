@@ -23,9 +23,8 @@ class Preprocessing:
     input_shape: Tuple[int, int, int] = Field()
 
     def input(self, data, training) -> tf.Tensor:
-        """
-        A method to define preprocessing for model input. This method or
-        `__call__` needs to be overwritten by all subclasses.
+        """A method to define preprocessing for model input. This method or `__call__`
+        needs to be overwritten by all subclasses.
 
         Arguments:
             data:
@@ -40,9 +39,8 @@ class Preprocessing:
         raise NotImplementedError("Must be implemented in subclasses.")
 
     def output(self, data, training) -> tf.Tensor:
-        """
-        A method to define preprocessing for model output. This method or
-        `__call__` needs to be overwritten by all subclasses.
+        """A method to define preprocessing for model output. This method or `__call__`
+        needs to be overwritten by all subclasses.
 
         Arguments:
             data:
@@ -57,8 +55,7 @@ class Preprocessing:
         raise NotImplementedError("Must be implemented in subclasses.")
 
     def __call__(self, data, training=False) -> Tuple[tf.Tensor, tf.Tensor]:
-        """
-        Apply Preprocessing.
+        """Apply Preprocessing.
 
         Arguments:
             data:
