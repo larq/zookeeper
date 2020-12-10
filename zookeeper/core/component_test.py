@@ -661,7 +661,6 @@ def test_component_configure_override():
             " `configure(self, conf, **kwargs)` at the end of this function."
         ),
     ):
-
         instance = A()
         instance.__configure__({})
 
