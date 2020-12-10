@@ -1,4 +1,5 @@
 import abc
+import re
 from typing import List, Tuple
 from unittest.mock import patch
 
@@ -625,6 +626,48 @@ def test_component_allow_missing_field_inherits_defaults():
     instance = Parent()
     configure(instance, {})
     assert instance.child.a == 5
+
+
+def test_component_configure_override():
+    @component
+    class A:
+        def __configure__(self, conf, **kwargs):
+            pass
+
+    # It doesn't call `configure`, so an error should be thrown.
+    with pytest.raises(
+        ValueError,
+        match=re.escape("`A` remains unconfigured after calling __configure__!"),
+    ):
+        instance = A()
+        instance.__configure__({})
+
+    # This should pass
+    @component
+    class B:
+        attribute: int = Field(0)
+
+        def __configure__(self, *args, **kwargs):
+            self.attribute = 3
+            configure(self, *args, **kwargs)
+
+    instance = B()
+    instance.__configure__({})
+    assert instance.attribute == 3
+
+    # This also should not, since it isn't a function at all
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "The `__configure__` attribute of a @component class must be a method."
+        ),
+    ):
+
+        @component
+        class C:
+            __configure__ = "test"
+
+        instance = C()
 
 
 def test_component_field_setattr():
