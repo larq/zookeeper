@@ -696,7 +696,6 @@ def test_component_configure_override():
             "The `__configure__` attribute of a @component class must be a method."
         ),
     ):
-
         @component
         class D:
             __configure__ = "test"
