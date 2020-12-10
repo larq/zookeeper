@@ -323,7 +323,6 @@ def _wrap_configure(component_cls: Type) -> None:
                     "calling __configure__! Make sure to call "
                     "`configure(self, conf, **kwargs)` at the end of this function."
                 )
-            assert instance.__component_configured__
 
         component_cls.__configure__ = wrapped_configure
 
