@@ -283,10 +283,7 @@ def _wrap_configure(component_cls: Type) -> None:
                 "method."
             )
         call_args = inspect.signature(component_cls.__configure__).parameters
-        configure_args = frozenset(
-            name if name != "instance" else "self"
-            for name in inspect.signature(configure).parameters
-        )
+        configure_args = inspect.signature(configure).parameters
 
         error_message = (
             "The `__configure__` method of a @component class must match the arguments "
@@ -299,6 +296,7 @@ def _wrap_configure(component_cls: Type) -> None:
             if (
                 arg_param.kind in (arg_param.VAR_POSITIONAL, arg_param.VAR_KEYWORD)
                 or arg_name in configure_args
+                or arg_name == "self"
             ):
                 continue
             raise TypeError(error_message)

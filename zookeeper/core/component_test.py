@@ -670,6 +670,15 @@ def test_component_configure_override():
 
         instance = C()
 
+    # This should definitely pass, since it's the default
+    @component
+    class D:
+        test: str = Field("test")
+        pass
+
+    instance = D()
+    instance.__configure__({})
+
 
 def test_component_field_setattr():
     @component
