@@ -657,8 +657,7 @@ def test_component_configure_override():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "`A` remains unconfigured after calling __configure__! Make sure to call"
-            " `configure(self, conf, **kwargs)` at the end of this function."
+            "`A` remains unconfigured after calling __configure__!"
         ),
     ):
         instance = A()
