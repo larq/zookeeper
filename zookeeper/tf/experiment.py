@@ -8,9 +8,9 @@ from zookeeper.tf.preprocessing import Preprocessing
 
 
 class Experiment:
-    """A wrapper around a Keras experiment.
-
-    Subclasses must implement their training loop in `run`.
+    """
+    A wrapper around a Keras experiment. Subclasses must implement their
+    training loop in `run`.
     """
 
     # Nested components

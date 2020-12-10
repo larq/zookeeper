@@ -9,24 +9,25 @@ from zookeeper.core.field import Field  # type: ignore
 
 
 class Dataset(abc.ABC):
-    """An abstract base class to encapsulate a dataset.
-
-    Concrete sub-classes must implement the `train` method, and optionally the
-    `validation` method.
+    """
+    An abstract base class to encapsulate a dataset. Concrete sub-classes must
+    implement the `train` method, and optionally the `validation` method.
     """
 
     @abc.abstractmethod
     def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
-        """Return a tuple of the training dataset and the number of training examples in
-        the dataset."""
+        """
+        Return a tuple of the training dataset and the number of training
+        examples in the dataset.
+        """
 
         raise NotImplementedError
 
     def validation(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
-        """Return a tuple of the validation dataset and the number of validation
-        examples in the dataset.
-
-        By default, raises an error that no validation data is provided.
+        """
+        Return a tuple of the validation dataset and the number of validation
+        examples in the dataset. By default, raises an error that no validation
+        data is provided.
         """
 
         raise ValueError(
@@ -35,10 +36,9 @@ class Dataset(abc.ABC):
         )
 
     def test(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
-        """Return a tuple of the test dataset and the number of test examples in the
-        dataset.
-
-        By default, raises an error that no test data is provided.
+        """
+        Return a tuple of the test dataset and the number of test examples in
+        the dataset. By default, raises an error that no test data is provided.
         """
 
         raise ValueError(
@@ -47,10 +47,10 @@ class Dataset(abc.ABC):
 
 
 def base_splits(split):
-    """Splits can be merged, e.g. `tfds.Split.TRAIN + tfds.Split.Validation` or
-    `"train+validation"`.
-
-    For such composite splits, find and return a list of 'base splits'.
+    """
+    Splits can be merged, e.g. `tfds.Split.TRAIN + tfds.Split.Validation` or
+    `"train+validation"`. For such composite splits, find and return a list of
+    'base splits'.
     """
 
     if "+" in split:
@@ -67,7 +67,9 @@ def base_splits(split):
 
 
 class TFDSDataset(Dataset):
-    """A wrapper around a TensorFlowDatasets dataset."""
+    """
+    A wrapper around a TensorFlowDatasets dataset.
+    """
 
     # The TensorFlowDatasets name, which may specify a builder config and/or
     # version, e.g. "imagenet2012:4.0.0"
@@ -165,9 +167,9 @@ class TFDSDataset(Dataset):
 
 
 class MultiTFDSDataset(Dataset):
-    """A wrapper around multiple TensorFlowDatasets datasets.
-
-    This allows a model to be trained on data that is combined from multiple datasets.
+    """
+    A wrapper around multiple TensorFlowDatasets datasets. This allows a model
+    to be trained on data that is combined from multiple datasets.
     """
 
     # The directory that the dataset is stored in.
@@ -190,8 +192,10 @@ class MultiTFDSDataset(Dataset):
     test_split: Dict[str, str] = Field(lambda: {})
 
     def num_examples(self, splits) -> int:
-        """Compute the total number of examples in the splits specified by the
-        dictionary `splits`."""
+        """
+        Compute the total number of examples in the splits specified by the
+        dictionary `splits`.
+        """
 
         return sum(
             tfds.builder(name, data_dir=self.data_dir).info.splits[s].num_examples

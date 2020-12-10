@@ -1,6 +1,6 @@
-"""Keep track of user-defined @factory classes.
-
-This is defined here only to avoid import loops.
+"""
+Keep track of user-defined @factory classes. This is defined here only to avoid
+import loops.
 """
 
 from typing import Dict, Set, Type

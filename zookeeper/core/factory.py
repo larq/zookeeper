@@ -8,8 +8,10 @@ from zookeeper.core.factory_registry import FACTORY_REGISTRY
 
 
 def _wrap_build(factory_cls: Type) -> None:
-    """Every @factory has a `build()` method, which we wrap so that `build()` is only
-    called once (lazily) and the value is cached."""
+    """
+    Every @factory has a `build()` method, which we wrap so that `build()` is
+    only called once (lazily) and the value is cached.
+    """
     fn = factory_cls.build
 
     @functools.wraps(fn)
@@ -49,7 +51,8 @@ def _wrap_str_repr(factory_cls: Type) -> None:
 
 
 def factory(cls: Type):
-    """A decorator which turns a class into a Zookeeper factory.
+    """
+    A decorator which turns a class into a Zookeeper factory.
 
     Factories are in particular Zookeeper components, so can have `Field`s and
     `ComponentFields`. Factories must define an argument-less `build()` method,

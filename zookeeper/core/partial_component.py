@@ -24,7 +24,8 @@ _kwargs_error = TypeError(
 
 
 class PartialComponent(Generic[_ComponentType]):
-    """A wrapper around a component class that represents the component with some
+    """
+    A wrapper around a component class that represents the component with some
     default field values modified, similar in principle to `functools.partial`.
 
     `PartialComponent(SomeComponentClass, a=3)(b=4)` is equivalent to
