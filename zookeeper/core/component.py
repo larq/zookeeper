@@ -287,13 +287,6 @@ def _wrap_configure(component_cls: Type) -> None:
         call_args = inspect.signature(component_cls.__configure__).parameters
         configure_args = inspect.signature(configure).parameters
 
-        error_message = (
-            "The `__configure__` method of a @component class must match the arguments "
-            f"of `configure()`, but `{component_cls.__name__}.__configure__` "
-            f"accepts arguments {tuple(name for name in call_args)}. Valid arguments: "
-            f"({', '.join(name for name in configure_args)})"
-        )
-
         for arg_name, arg_param in call_args.items():
             if (
                 arg_param.kind in (arg_param.VAR_POSITIONAL, arg_param.VAR_KEYWORD)
@@ -301,7 +294,12 @@ def _wrap_configure(component_cls: Type) -> None:
                 or arg_name == "self"
             ):
                 continue
-            raise TypeError(error_message)
+            raise TypeError(
+                "The `__configure__` method of a @component class must match the "
+                f"arguments of `configure()`, but `{component_cls.__name__}.__configure__`"
+                f" accepts arguments {tuple(name for name in call_args)}. Valid "
+                f"arguments: ({', '.join(name for name in configure_args)})"
+            )
 
         fn = component_cls.__configure__
 
