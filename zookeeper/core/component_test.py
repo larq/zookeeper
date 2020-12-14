@@ -92,7 +92,7 @@ def test_no_init(ExampleComponentClass):
         TypeError,
         match=(
             "Keyword arguments passed to component `__init__` must correspond to "
-            "component fields. Received non-matching argument 'some_other_field_name'"
+            "component fields. Received non-matching argument 'some_other_field_name'."
         ),
     ):
         ExampleComponentClass(some_other_field_name=0)
@@ -646,7 +646,7 @@ def test_component_allow_missing_field_inherits_defaults():
     assert instance.child.a == 5
 
 
-def test_component_field_setattr():
+def test_component_pre_configure_setattr():
     @component
     class A:
         a: int = Field(6)
@@ -663,8 +663,76 @@ def test_component_field_setattr():
     # Setting values after configuration is prohibited
     with pytest.raises(
         ValueError,
-        match="Setting already configured component field values directly is "
-        "prohibited. Use Zookeeper component configuration to set field"
-        " values.",
+        match=(
+            "Setting already configured component field values directly is prohibited. "
+            "Use Zookeeper component configuration to set field values."
+        ),
     ):
         instance.a = 5
+
+
+def test_component_pre_configure_setattr_with_component_instance():
+    @component
+    class Child:
+        a: int = Field(5)
+
+    @component
+    class Parent:
+        child: Child = ComponentField()
+
+    instance = Parent()
+
+    child_instance = Child(a=15)
+    instance.child = child_instance
+    assert instance.child is child_instance  # Test reference equality
+    assert instance.child.a == 15
+
+    # Trying to set a field value with a component instance should throw.
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Component instances can only be set as values for `ComponentField`s, "
+            "but Child.a is a `Field`."
+        ),
+    ):
+        child_instance.a = Child()
+
+    # Trying with a configured child instance should raise an error.
+    new_child_instance = Child()
+    configure(new_child_instance, {"a": 43})
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Component instances can only be set as values if they are not yet "
+            "configured."
+        ),
+    ):
+        instance.child = new_child_instance
+
+
+def test_component_pre_configure_setattr_with_nesting():
+    @component
+    class Child:
+        a: int = Field()
+
+    @component
+    class Parent:
+        child_1: Child = ComponentField(Child)
+        child_2: Child = ComponentField(Child, a=-1)
+        a: int = Field(5)
+
+    instance = Parent(a=100)
+    assert instance.a == 100
+    assert instance.child_1.a == 100
+    assert instance.child_2.a == -1
+
+    instance.a = 2020
+    instance.child_2.a = -7
+    assert instance.a == 2020
+    assert instance.child_1.a == 2020
+    assert instance.child_2.a == -7
+
+    configure(instance, {"a": 0, "child_2.a": 5})
+    assert instance.a == 0
+    assert instance.child_1.a == 0
+    assert instance.child_2.a == 5
