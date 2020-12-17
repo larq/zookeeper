@@ -1,5 +1,4 @@
-"""
-Components are generic, modular classes designed to be easily configurable.
+"""Components are generic, modular classes designed to be easily configurable.
 
 Components have configurable fields, which can contain either generic Python
 objects or nested sub-components. These are declared with class-level Python
@@ -99,7 +98,7 @@ except ImportError:  # pragma: no cover
 ###################################
 
 
-def _type_check_and_cache(instance, field: Field, result: Any) -> None:
+def _type_check_and_maybe_cache(instance, field: Field, result: Any) -> None:
     """A utility method for `_wrap_getattribute`."""
 
     if not utils.type_check(result, field.type):
@@ -109,19 +108,19 @@ def _type_check_and_cache(instance, field: Field, result: Any) -> None:
             f"value {repr(result)}."
         )
 
-    object.__setattr__(instance, field.name, result)
+    if instance.__component_configured__:
+        object.__setattr__(instance, field.name, result)
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
-    """
-    The logic for this overriden `__getattribute__` is as follows:
+    """The logic for this overriden `__getattribute__` is as follows:
 
     During component instantiation, any values passed to `__init__` are stored
     in a dict on the instance `__component_instantiated_field_values__`. This
     means that a priori the `__dict__` of a component instance is empty (of
     non-dunder attributes).
 
-    Field values can come from three sources, in descending order of priority:
+    Field values can come from four sources, in descending order of priority:
       1) A value that was passed into `configure` (e.g. via the CLI), which is
          stored in the `__component_configured_field_values__` dict on the
          component instance or some parent component instance.
@@ -130,17 +129,22 @@ def _wrap_getattribute(component_cls: Type) -> None:
          instance (but not any parent instance).
       3) A default value obtained from the `get_default` factory method of a
          field defined on the component class of the current instance if it has
-         one, or otherwise from the factory of the field on the component class
-         of the nearest parent component instance with a field of the same name,
-         et cetera.
+         one. Values obtained in this way are cached in the dict
+         `__component_default_field_values__` after generation, to ensure that
+         the default value for each field is generated at most once per
+         instance.
+      4) A value obtained from the nearest parent component instance with a
+         field of the same name.
 
-    Once we find a field value from one of these three sources, we set the value
-    on the instance `__dict__` (i.e. we 'cache' it).
-
-    This means that if we find a value in the instance `__dict__` we can
-    immediately return it without worrying about checking the three cases above
-    in order. It also means that each look-up other than the first will incur no
-    substantial time penalty.
+    Once we find a field value from one of these four sources, we perform
+    type-checking. If the component has already been configured, we set the
+    value on the instance `__dict__` (i.e. we 'cache' it). This is only done
+    after configuration because prior to that point we allow using `setattr` to
+    override field values. This means that, after configuration, if we find a
+    value in the instance `__dict__` we can immediately return it without
+    worrying about checking the four cases above in order, or doing
+    type-checking. Thus, each subsequent look-up will incur no substantial time
+    penalty.
     """
     fn = component_cls.__getattribute__  # type: ignore
 
@@ -164,7 +168,7 @@ def _wrap_getattribute(component_cls: Type) -> None:
                 result = ancestor_with_field.__component_configured_field_values__[name]
                 # Type-check, cache the result, delete it if possible from the
                 # instantiated values, and return it.
-                _type_check_and_cache(instance, field, result)
+                _type_check_and_maybe_cache(instance, field, result)
                 if name in instance.__component_instantiated_field_values__:
                     del instance.__component_instantiated_field_values__[name]
                 return result
@@ -173,14 +177,23 @@ def _wrap_getattribute(component_cls: Type) -> None:
         if name in instance.__component_instantiated_field_values__:
             # Type-check, cache, and return the result.
             result = instance.__component_instantiated_field_values__[name]
-            _type_check_and_cache(instance, field, result)
+            _type_check_and_maybe_cache(instance, field, result)
+            if instance.__component_configured__:
+                del instance.__component_instantiated_field_values__[name]
             return result
 
-        # Finally, try Source 3)
+        # Next, try Sources 3)
+        if name in instance.__component_default_field_values__:
+            return instance.__component_default_field_values__[name]
         try:
             result = field.get_default(instance)
+            # Set the correct component parent if `result` is a sub-component.
+            if isinstance(field, ComponentField):
+                result.__component_parent__ = instance
+            instance.__component_default_field_values__[name] = result
         except AttributeError as e:
-            # Find the closest parent with a field of the same name, and
+            # And if necessary fall back to Source 4)
+            #     Find the closest parent with a field of the same name, and
             # recurse.
             parent_instance = next(
                 utils.generate_component_ancestors_with_field(instance, name), None
@@ -194,7 +207,7 @@ def _wrap_getattribute(component_cls: Type) -> None:
                 raise e from None
 
         # Type-check, cache, and return the result.
-        _type_check_and_cache(instance, field, result)
+        _type_check_and_maybe_cache(instance, field, result)
         return result
 
     component_cls.__base_getattribute__ = base_wrapped_fn
@@ -243,9 +256,21 @@ def _wrap_setattr(component_cls: Type) -> None:
                 if instance.__component_configured__:
                     raise ValueError(
                         "Setting already configured component field values directly is "
-                        "prohibited. Use Zookeeper component configuration to set field"
-                        " values."
+                        "prohibited. Use Zookeeper component configuration to set field "
+                        "values."
                     )
+                if utils.is_component_instance(value):
+                    if not isinstance(value_defined_on_class, ComponentField):
+                        raise ValueError(
+                            "Component instances can only be set as values for "
+                            "`ComponentField`s, but "
+                            f"{instance.__component_name__}.{name} is a `Field`."
+                        )
+                    if value.__component_configured__:
+                        raise ValueError(
+                            "Component instances can only be set as values if they are "
+                            "not yet configured."
+                        )
                 instance.__component_instantiated_field_values__[name] = value
                 return
         except AttributeError:
@@ -389,9 +414,7 @@ def __component_str__(instance):
 
 
 def __component_init__(instance, **kwargs):
-    """
-    Accepts keyword-arguments corresponding to fields defined on the component.
-    """
+    """Accepts keyword-arguments corresponding to fields defined on the component."""
 
     # Use the `kwargs` to set field values.
     for name, value in kwargs.items():
@@ -400,6 +423,21 @@ def __component_init__(instance, **kwargs):
                 "Keyword arguments passed to component `__init__` must correspond to "
                 f"component fields. Received non-matching argument '{name}'."
             )
+        if utils.is_component_instance(value):
+            if value.__component_configured__:
+                raise ValueError(
+                    "Sub-component instances passed to the `__init__` method of a "
+                    "component must not already be configured. Received configured "
+                    f"component argument '{name}={repr(value)}'."
+                )
+            # Set the component parent correctly if the value being passed in
+            # does not already have a parent.
+            if value.__component_parent__ is None:
+                value.__component_parent__ = instance
+
+    # This will contain default field values from the fields defined on this
+    # instance.
+    instance.__component_default_field_values__ = {}
 
     # Save a shallow-clone of the arguments.
     instance.__component_instantiated_field_values__ = {**kwargs}
@@ -511,8 +549,7 @@ def configure(
     name: Optional[str] = None,
     interactive: bool = False,
 ):
-    """
-    Configure the component instance with parameters from the `conf` dict.
+    """Configure the component instance with parameters from the `conf` dict.
 
     Configuration passed through `conf` takes precedence over and will
     overwrite any values already set on the instance - either class defaults
@@ -595,6 +632,9 @@ def configure(
             )
             # This is safe because we don't allow custom `__init__` methods.
             conf_field_value = component_cls()
+            # Set the component parent so that field value inheritence will work
+            # correctly.
+            conf_field_value.__component_parent__ = instance
 
             # Set the value on the instance.
             instance.__component_configured_field_values__[
@@ -712,10 +752,6 @@ def configure(
         full_name = f"{instance.__component_name__}.{field.name}"
 
         if not sub_component_instance.__component_configured__:
-            # Set the component parent so that inherited fields function
-            # correctly.
-            sub_component_instance.__component_parent__ = instance
-
             # Extend the field names in scope. All fields with values defined in
             # the scope of the parent are also accessible in the child.
             sub_component_instance.__component_fields_with_values_in_scope__ |= (
