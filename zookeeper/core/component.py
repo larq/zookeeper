@@ -322,7 +322,7 @@ def _wrap_configure(component_cls: Type) -> None:
             raise TypeError(
                 "The `__configure__` method of a @component class must match the "
                 f"arguments of `configure()`, but `{component_cls.__name__}.__configure__`"
-                f" accepts arguments {tuple(name for name in call_args)}. Valid "
+                f" accepts arguments {tuple(call_args)}. Valid "
                 f"arguments: ({', '.join(name for name in configure_args)})"
             )
 
