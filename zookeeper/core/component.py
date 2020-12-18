@@ -323,7 +323,7 @@ def _wrap_configure(component_cls: Type) -> None:
                 "The `__configure__` method of a @component class must match the "
                 f"arguments of `configure()`, but `{component_cls.__name__}.__configure__`"
                 f" accepts arguments {tuple(call_args)}. Valid "
-                f"arguments: ({', '.join(name for name in configure_args)})"
+                f"arguments: ({', '.join(configure_args)})"
             )
 
         fn = component_cls.__configure__
