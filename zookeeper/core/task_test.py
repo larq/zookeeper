@@ -37,10 +37,8 @@ def test_no_run_error():
 
 
 def test_run_with_args_error():
-    """
-    Defining a subclass which has a `run` that takes any arguments should raise
-    a ValueError.
-    """
+    """Defining a subclass which has a `run` that takes any arguments should raise a
+    ValueError."""
 
     with pytest.raises(
         TypeError,

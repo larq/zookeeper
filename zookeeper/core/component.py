@@ -1,5 +1,4 @@
-"""
-Components are generic, modular classes designed to be easily configurable.
+"""Components are generic, modular classes designed to be easily configurable.
 
 Components have configurable fields, which can contain either generic Python
 objects or nested sub-components. These are declared with class-level Python
@@ -114,8 +113,7 @@ def _type_check_and_maybe_cache(instance, field: Field, result: Any) -> None:
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
-    """
-    The logic for this overriden `__getattribute__` is as follows:
+    """The logic for this overriden `__getattribute__` is as follows:
 
     During component instantiation, any values passed to `__init__` are stored
     in a dict on the instance `__component_instantiated_field_values__`. This
@@ -304,6 +302,51 @@ def _wrap_dir(component_cls: Type) -> None:
     component_cls.__dir__ = wrapped_fn
 
 
+def _wrap_configure(component_cls: Type) -> None:
+    if hasattr(component_cls, "__configure__"):
+        if not callable(component_cls.__configure__):
+            raise TypeError(
+                "The `__configure__` attribute of a @component class must be a "
+                "method."
+            )
+        call_args = inspect.signature(component_cls.__configure__).parameters
+        configure_args = inspect.signature(configure).parameters
+
+        if not all(
+            arg_param.kind in (arg_param.VAR_POSITIONAL, arg_param.VAR_KEYWORD)
+            or arg_name in configure_args
+            or arg_name == "self"
+            for arg_name, arg_param in call_args.items()
+        ):
+            raise TypeError(
+                "The `__configure__` method of a @component class must match the "
+                f"arguments of `configure()`, but `{component_cls.__name__}.__configure__`"
+                f" accepts arguments {tuple(call_args)}. Valid "
+                f"arguments: ({', '.join(configure_args)})"
+            )
+
+        fn = component_cls.__configure__
+
+        @functools.wraps(fn)
+        def wrapped_configure(instance, *args, **kwargs):
+            fn(instance, *args, **kwargs)
+            if not instance.__component_configured__:
+                raise ValueError(
+                    f"`{instance.__component_name__}` remains unconfigured after "
+                    "calling __configure__! Make sure to call "
+                    "`configure(self, conf, **kwargs)` at the end of this function."
+                )
+
+        component_cls.__configure__ = wrapped_configure
+
+    else:
+        component_cls.__configure__ = __component__configure__
+
+
+def __component__configure__(instance, *args, **kwargs):
+    configure(instance, *args, **kwargs)
+
+
 #################################
 # Pretty string representations #
 #################################
@@ -370,9 +413,7 @@ def __component_str__(instance):
 
 
 def __component_init__(instance, **kwargs):
-    """
-    Accepts keyword-arguments corresponding to fields defined on the component.
-    """
+    """Accepts keyword-arguments corresponding to fields defined on the component."""
 
     # Use the `kwargs` to set field values.
     for name, value in kwargs.items():
@@ -487,6 +528,7 @@ def component(cls: Type):
     _wrap_setattr(cls)
     _wrap_delattr(cls)
     _wrap_dir(cls)
+    _wrap_configure(cls)
 
     # Components should have nice `__str__` and `__repr__` methods.
     cls.__str__ = __component_str__
@@ -506,8 +548,7 @@ def configure(
     name: Optional[str] = None,
     interactive: bool = False,
 ):
-    """
-    Configure the component instance with parameters from the `conf` dict.
+    """Configure the component instance with parameters from the `conf` dict.
 
     Configuration passed through `conf` takes precedence over and will
     overwrite any values already set on the instance - either class defaults
@@ -723,8 +764,7 @@ def configure(
                 for a, b in conf.items()
                 if a.startswith(f"{field.name}.")
             }
-            configure(
-                sub_component_instance,
+            sub_component_instance.__configure__(
                 field_name_scoped_conf,
                 name=full_name,
                 interactive=interactive,

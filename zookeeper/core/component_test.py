@@ -1,4 +1,5 @@
 import abc
+import re
 from typing import List, Tuple
 from unittest.mock import patch
 
@@ -21,9 +22,7 @@ def ExampleComponentClass():
 
 
 def test_non_class_decorate_error():
-    """
-    An error should be raised when attempting to decorate a non-class object.
-    """
+    """An error should be raised when attempting to decorate a non-class object."""
     with pytest.raises(
         TypeError, match="Only classes can be decorated with @component."
     ):
@@ -34,9 +33,7 @@ def test_non_class_decorate_error():
 
 
 def test_abstract_class_decorate_error():
-    """
-    An error should be raised when attempting to decorate an abstract class.
-    """
+    """An error should be raised when attempting to decorate an abstract class."""
     with pytest.raises(
         TypeError, match="Abstract classes cannot be decorated with @component."
     ):
@@ -49,10 +46,8 @@ def test_abstract_class_decorate_error():
 
 
 def test_init_decorate_error():
-    """
-    An error should be raised when attempting to decorate a class with an
-    `__init__` method.
-    """
+    """An error should be raised when attempting to decorate a class with an `__init__`
+    method."""
     with pytest.raises(
         TypeError,
         match="Component classes must not define a custom `__init__` method.",
@@ -66,11 +61,9 @@ def test_init_decorate_error():
 
 
 def test_no_init(ExampleComponentClass):
-    """
-    If the decorated class does not have an `__init__` method, the decorated
-    class should define an `__init__` which accepts kwargs to set field values,
-    and raises appropriate arguments when other values are passed.
-    """
+    """If the decorated class does not have an `__init__` method, the decorated class
+    should define an `__init__` which accepts kwargs to set field values, and raises
+    appropriate arguments when other values are passed."""
 
     x = ExampleComponentClass(a=2)
     assert x.a == 2
@@ -157,10 +150,8 @@ def test_configure_scoped_override_field_values():
 
 
 def test_configure_automatically_instantiate_subcomponent():
-    """
-    If there is only a single component subclass of a field type, an instance of
-    the class should be automatically instantiated during configuration.
-    """
+    """If there is only a single component subclass of a field type, an instance of the
+    class should be automatically instantiated during configuration."""
 
     class AbstractChild:
         pass
@@ -197,10 +188,8 @@ def test_configure_automatically_instantiate_subcomponent():
 
 
 def test_configure_non_interactive_missing_field_value(ExampleComponentClass):
-    """
-    When not configuring interactively, an error should be raised if a field has
-    neither a default nor a configured value.
-    """
+    """When not configuring interactively, an error should be raised if a field has
+    neither a default nor a configured value."""
 
     with pytest.raises(
         ValueError,
@@ -210,10 +199,8 @@ def test_configure_non_interactive_missing_field_value(ExampleComponentClass):
 
 
 def test_configure_interactive_prompt_missing_field_value(ExampleComponentClass):
-    """
-    When configuring interactively, fields without default or configured values
-    should prompt for value input through the CLI.
-    """
+    """When configuring interactively, fields without default or configured values
+    should prompt for value input through the CLI."""
 
     x = ExampleComponentClass()
     a_value = 42
@@ -227,11 +214,9 @@ def test_configure_interactive_prompt_missing_field_value(ExampleComponentClass)
 
 
 def test_configure_interactive_prompt_for_subcomponent_choice():
-    """
-    When configuring interactively, sub-component fields without default or
-    configured values should prompt for a choice of subcomponents to instantiate
-    through the CLI.
-    """
+    """When configuring interactively, sub-component fields without default or
+    configured values should prompt for a choice of subcomponents to instantiate through
+    the CLI."""
 
     class AbstractChild:
         pass
@@ -278,10 +263,8 @@ def test_configure_interactive_prompt_for_subcomponent_choice():
 
 
 def test_str_and_repr():
-    """
-    `__str__` and `__repr__` should give formatted strings that represent nested
-    components nicely.
-    """
+    """`__str__` and `__repr__` should give formatted strings that represent nested
+    components nicely."""
 
     @component
     class Child1:
@@ -644,6 +627,85 @@ def test_component_allow_missing_field_inherits_defaults():
     instance = Parent()
     configure(instance, {})
     assert instance.child.a == 5
+
+
+def test_component_configure_override():
+    @component
+    class A:
+        def __configure__(self, conf, **kwargs):
+            pass
+
+    # It doesn't call `configure`, so an error should be thrown.
+    with pytest.raises(
+        ValueError,
+        match=re.escape("`A` remains unconfigured after calling __configure__!"),
+    ):
+        instance = A()
+        instance.__configure__({})
+
+    # This should pass
+    @component
+    class B:
+        attribute: int = Field(0)
+
+        def __configure__(self, *args, **kwargs):
+            self.attribute = 3
+            configure(self, *args, **kwargs)
+
+    instance = B()
+    instance.__configure__({})
+    assert instance.attribute == 3
+
+    # This also should not, since it isn't a function at all
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "The `__configure__` attribute of a @component class must be a method."
+        ),
+    ):
+
+        @component
+        class C:
+            __configure__ = "test"
+
+        instance = C()
+
+    # This should definitely pass, since it's the default
+    @component
+    class D:
+        test: str = Field("test")
+        pass
+
+    instance = D()
+    instance.__configure__({})
+
+    # This should not pass, since its arguments are wrong
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "The `__configure__` method of a @component class must match the "
+            "arguments of `configure()`"
+        ),
+    ):
+
+        @component
+        class E:
+            def __configure__(self, *args, extra=0):
+                pass
+
+    # This should not pass, since its arguments are wrong
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "The `__configure__` method of a @component class must match the "
+            "arguments of `configure()`"
+        ),
+    ):
+
+        @component
+        class F:
+            def __configure__(self, test, config):
+                pass
 
 
 def test_component_pre_configure_setattr():
