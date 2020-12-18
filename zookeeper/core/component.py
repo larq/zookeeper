@@ -312,13 +312,12 @@ def _wrap_configure(component_cls: Type) -> None:
         call_args = inspect.signature(component_cls.__configure__).parameters
         configure_args = inspect.signature(configure).parameters
 
-        for arg_name, arg_param in call_args.items():
-            if (
-                arg_param.kind in (arg_param.VAR_POSITIONAL, arg_param.VAR_KEYWORD)
-                or arg_name in configure_args
-                or arg_name == "self"
-            ):
-                continue
+        if not all(
+            arg_param.kind in (arg_param.VAR_POSITIONAL, arg_param.VAR_KEYWORD)
+            or arg_name in configure_args
+            or arg_name == "self"
+            for arg_name, arg_param in call_args.items()
+        ):
             raise TypeError(
                 "The `__configure__` method of a @component class must match the "
                 f"arguments of `configure()`, but `{component_cls.__name__}.__configure__`"
