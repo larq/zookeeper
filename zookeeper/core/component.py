@@ -247,12 +247,7 @@ def base_getattr(instance, name: str):
 
 
 def base_hasattr(instance, name: str):
-    try:
-        return hasattr(instance, name)
-    # If a ConfigurationError is thrown, that means the attribute does exist, but
-    # has no value yet.
-    except ConfigurationError:
-        return True
+    return name in dir(instance)
 
 
 def _wrap_setattr(component_cls: Type) -> None:

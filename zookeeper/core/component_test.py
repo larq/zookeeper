@@ -811,6 +811,7 @@ def test_base_hasattr():
     @component
     class A:
         attribute: int = Field()
+        missing_attribute: int = Field(allow_missing=True)
         with_value: int = Field(0)
 
     instance = A()
@@ -822,3 +823,6 @@ def test_base_hasattr():
         hasattr(instance, "attribute")
 
     assert base_hasattr(instance, "attribute")
+
+    assert not hasattr(instance, "missing_attribute")
+    assert base_hasattr(instance, "missing_attribute")
