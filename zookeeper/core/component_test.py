@@ -713,14 +713,17 @@ def test_component_pre_configure_setattr():
     class A:
         a: int = Field(6)
         b: float = Field(allow_missing=True)
+        c: float = Field()
 
     # Setting default values on fields before configuration is fine
     instance = A()
     instance.a = 3
     instance.b = 5.0
+    instance.c = 7.8
     configure(instance, {"a": 0})
     assert instance.a == 0
     assert instance.b == 5.0
+    assert instance.c == 7.8
 
     # Setting values after configuration is prohibited
     with pytest.raises(
@@ -746,9 +749,12 @@ def test_component_pre_configure_setattr_with_component_instance():
 
     child_instance = Child(a=15)
     instance.child = child_instance
+    configure(instance, {})
     assert instance.child is child_instance  # Test reference equality
     assert instance.child.a == 15
+    assert instance.child.__component_configured__
 
+    new_child_instance = Child()
     # Trying to set a field value with a component instance should throw.
     with pytest.raises(
         ValueError,
@@ -757,10 +763,10 @@ def test_component_pre_configure_setattr_with_component_instance():
             "but Child.a is a `Field`."
         ),
     ):
-        child_instance.a = Child()
+        new_child_instance.a = Child()
 
     # Trying with a configured child instance should raise an error.
-    new_child_instance = Child()
+    instance = Parent()
     configure(new_child_instance, {"a": 43})
     with pytest.raises(
         ValueError,
