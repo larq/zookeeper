@@ -753,6 +753,7 @@ def test_component_pre_configure_setattr_with_component_instance():
     assert instance.child is child_instance  # Test reference equality
     assert instance.child.a == 15
 
+    new_child_instance = Child()
     # Trying to set a field value with a component instance should throw.
     with pytest.raises(
         ValueError,
@@ -761,10 +762,10 @@ def test_component_pre_configure_setattr_with_component_instance():
             "but Child.a is a `Field`."
         ),
     ):
-        child_instance.a = Child()
+        new_child_instance.a = Child()
 
     # Trying with a configured child instance should raise an error.
-    new_child_instance = Child()
+    instance = Parent()
     configure(new_child_instance, {"a": 43})
     with pytest.raises(
         ValueError,
