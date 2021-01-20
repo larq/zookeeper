@@ -713,14 +713,17 @@ def test_component_pre_configure_setattr():
     class A:
         a: int = Field(6)
         b: float = Field(allow_missing=True)
+        c: float = Field()
 
     # Setting default values on fields before configuration is fine
     instance = A()
     instance.a = 3
     instance.b = 5.0
+    instance.c = 7.8
     configure(instance, {"a": 0})
     assert instance.a == 0
     assert instance.b == 5.0
+    assert instance.c == 7.8
 
     # Setting values after configuration is prohibited
     with pytest.raises(
