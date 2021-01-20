@@ -752,6 +752,7 @@ def test_component_pre_configure_setattr_with_component_instance():
     configure(instance, {})
     assert instance.child is child_instance  # Test reference equality
     assert instance.child.a == 15
+    assert instance.child.__component_configured__
 
     new_child_instance = Child()
     # Trying to set a field value with a component instance should throw.
