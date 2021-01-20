@@ -281,6 +281,7 @@ def _wrap_setattr(component_cls: Type) -> None:
                             "Component instances can only be set as values if they are "
                             "not yet configured."
                         )
+                instance.__component_fields_with_values_in_scope__.add(name)
                 instance.__component_instantiated_field_values__[name] = value
                 return
         except AttributeError:
