@@ -6,9 +6,10 @@ from unittest.mock import patch
 import click
 import pytest
 
-from zookeeper.core.component import component, configure
+from zookeeper.core.component import base_hasattr, component, configure
 from zookeeper.core.factory import factory
 from zookeeper.core.field import ComponentField, Field
+from zookeeper.core.utils import ConfigurationError
 
 
 @pytest.fixture
@@ -798,3 +799,20 @@ def test_component_pre_configure_setattr_with_nesting():
     assert instance.a == 0
     assert instance.child_1.a == 0
     assert instance.child_2.a == 5
+
+
+def test_base_hasattr():
+    @component
+    class A:
+        attribute: int = Field()
+        with_value: int = Field(0)
+
+    instance = A()
+    assert hasattr(instance, "with_value")
+    assert base_hasattr(instance, "with_value")
+    assert not base_hasattr(instance, "fake_attribute")
+
+    with pytest.raises(ConfigurationError):
+        hasattr(instance, "attribute")
+
+    assert base_hasattr(instance, "attribute")

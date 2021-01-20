@@ -5,6 +5,7 @@ import pytest
 from zookeeper.core.component import component
 from zookeeper.core.field import ComponentField, Field
 from zookeeper.core.partial_component import PartialComponent
+from zookeeper.core.utils import ConfigurationError
 
 
 def test_init_non_immutable_non_callable():
@@ -28,7 +29,7 @@ def test_no_default():
     assert not A.foo.has_default
 
     with pytest.raises(
-        AttributeError, match="Field 'foo' has no default or configured value"
+        ConfigurationError, match="Field 'foo' has no default or configured value"
     ):
         A.foo.get_default(A())
 
@@ -159,7 +160,7 @@ def test_component_field_no_default():
     assert not A.foo.has_default
 
     with pytest.raises(
-        AttributeError,
+        ConfigurationError,
         match="ComponentField 'foo' has no default or configured component class.",
     ):
         A.foo.get_default(A())

@@ -83,6 +83,7 @@ from typing import Any, Dict, Iterator, List, Optional, Type
 from zookeeper.core import utils
 from zookeeper.core.factory_registry import FACTORY_REGISTRY
 from zookeeper.core.field import ComponentField, Field
+from zookeeper.core.utils import ConfigurationError
 
 try:  # pragma: no cover
     from colorama import Fore, Style
@@ -191,7 +192,7 @@ def _wrap_getattribute(component_cls: Type) -> None:
             if isinstance(field, ComponentField):
                 result.__component_parent__ = instance
             instance.__component_default_field_values__[name] = result
-        except AttributeError as e:
+        except (ConfigurationError, AttributeError) as e:
             # And if necessary fall back to Source 4)
             #     Find the closest parent with a field of the same name, and
             # recurse.
@@ -243,6 +244,15 @@ def base_getattr(instance, name: str):
     if utils.is_component_instance(instance):
         return instance.__class__.__base_getattribute__(instance, name)  # type: ignore
     return getattr(instance, name)
+
+
+def base_hasattr(instance, name: str):
+    try:
+        return hasattr(instance, name)
+    # If a ConfigurationError is thrown, that means the attribute does exist, but
+    # has no value yet.
+    except ConfigurationError:
+        return True
 
 
 def _wrap_setattr(component_cls: Type) -> None:
@@ -360,8 +370,8 @@ def _list_field_strings(instance, color: bool, single_line: bool) -> Iterator[st
     for field_name, field in instance.__component_fields__.items():
         try:
             value = base_getattr(instance, field_name)
-        except AttributeError as e:
-            if field.allow_missing:
+        except (ConfigurationError, AttributeError) as e:
+            if isinstance(e, AttributeError) and field.allow_missing:
                 value = utils.missing
             else:
                 raise e from None
@@ -740,7 +750,7 @@ def configure(
 
         try:
             sub_component_instance = base_getattr(instance, field.name)
-        except AttributeError as e:
+        except (AttributeError, ConfigurationError) as e:
             if field.allow_missing:
                 continue
             raise e from None

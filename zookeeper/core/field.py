@@ -3,6 +3,7 @@ from typing import Callable, Generic, Type, TypeVar, Union
 
 from zookeeper.core import utils
 from zookeeper.core.partial_component import PartialComponent
+from zookeeper.core.utils import ConfigurationError
 
 # Type-variables to parameterise fields. `C` is the type of the component the
 # field is attached to, and `F` is the type the field is annotated with.
@@ -141,9 +142,14 @@ class Field(Generic[C, F]):
         if not self._registered:
             raise ValueError("This field has not been registered to a component.")
         if not self.has_default:
-            raise AttributeError(
-                f"Field '{self.name}' has no default or configured value."
-            )
+            msg = f"Field '{self.name}' has no default or configured value."
+            # If this field is allow_missing, we raise an AttributeError, since it
+            # doesn't really exist.
+            if self.allow_missing:
+                raise AttributeError(msg)
+            # If it isn't allow_missing, this is a configuration error, because the
+            # attribute does exist, but has no value.
+            raise ConfigurationError(msg)
         if not isinstance(instance, self.host_component_class):
             raise TypeError(
                 f"Field '{self.name}' belongs to component "
@@ -261,10 +267,19 @@ class ComponentField(Field, Generic[C, F]):
         if not self._registered:
             raise ValueError("This field has not been registered to a component.")
         if not self.has_default:
-            raise AttributeError(
+            msg = (
                 f"ComponentField '{self.name}' has no default or configured component "
                 "class."
             )
+            # If this field is allow_missing, we raise an AttributeError, since it
+            # doesn't really exist.
+            if self.allow_missing:
+                raise AttributeError(msg)
+
+            # If it isn't allow_missing, this is a configuration error, because the
+            # attribute does exist, but has no value.
+            raise ConfigurationError(msg)
+
         if not isinstance(component_instance, self.host_component_class):
             raise TypeError(
                 f"ComponentField '{self.name}' belongs to component "
