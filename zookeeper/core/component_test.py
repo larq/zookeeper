@@ -749,6 +749,7 @@ def test_component_pre_configure_setattr_with_component_instance():
 
     child_instance = Child(a=15)
     instance.child = child_instance
+    configure(instance, {})
     assert instance.child is child_instance  # Test reference equality
     assert instance.child.a == 15
 
