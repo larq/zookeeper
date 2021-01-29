@@ -18,7 +18,7 @@ jobs:
           python-version: 3.7
       - name: Install project dependencies
         run: |
-          pip install tensorflow==2.2.0 colorama==0.4.1
+          pip install tensorflow==2.4.1 colorama==0.4.4
           pip install -e .[test]
       - name: Run Flake8
         run: flake8
