@@ -247,6 +247,10 @@ def base_getattr(instance, name: str):
 
 
 def base_hasattr(instance, name: str):
+    """Like the default `hasattr`, except that this does not throw a
+    `ConfigurationError` when the accessed attribute is not yet configured, and will
+    return `True` for fields that have `allow_missing=True` and have not been provided
+    any value."""
     return name in dir(instance)
 
 
