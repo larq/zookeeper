@@ -1,5 +1,4 @@
 import abc
-import re
 from typing import List, Tuple
 from unittest.mock import patch
 
@@ -630,83 +629,44 @@ def test_component_allow_missing_field_inherits_defaults():
     assert instance.child.a == 5
 
 
-def test_component_configure_override():
-    @component
-    class A:
-        def __configure__(self, conf, **kwargs):
-            pass
-
-    # It doesn't call `configure`, so an error should be thrown.
-    with pytest.raises(
-        ValueError,
-        match=re.escape("`A` remains unconfigured after calling __configure__!"),
-    ):
-        instance = A()
-        instance.__configure__({})
-
-    # This should pass
-    @component
-    class B:
-        attribute: int = Field(0)
-
-        def __configure__(self, *args, **kwargs):
-            self.attribute = 3
-            configure(self, *args, **kwargs)
-
-    instance = B()
-    instance.__configure__({})
-    assert instance.attribute == 3
-
-    # This also should not, since it isn't a function at all
+def test_component_pre_configure():
     with pytest.raises(
         TypeError,
-        match=re.escape(
-            "The `__configure__` attribute of a @component class must be a method."
-        ),
+        match="The `__pre_configure__` attribute of a @component class must be a method.",
     ):
 
         @component
-        class C:
-            __configure__ = "test"
+        class A:
+            __pre_configure__ = 3.14
 
-        instance = C()
-
-    # This should definitely pass, since it's the default
-    @component
-    class D:
-        test: str = Field("test")
-        pass
-
-    instance = D()
-    instance.__configure__({})
-
-    # This should not pass, since its arguments are wrong
     with pytest.raises(
         TypeError,
-        match=re.escape(
-            "The `__configure__` method of a @component class must match the "
-            "arguments of `configure()`"
-        ),
+        match="The `__pre_configure__` method of a @component class must take no arguments except `self` and `conf`",
     ):
 
         @component
-        class E:
-            def __configure__(self, *args, extra=0):
+        class B:
+            def __pre_configure__(self, x, y):
                 pass
 
-    # This should not pass, since its arguments are wrong
-    with pytest.raises(
-        TypeError,
-        match=re.escape(
-            "The `__configure__` method of a @component class must match the "
-            "arguments of `configure()`"
-        ),
-    ):
+    # This definition should succeed.
+    @component
+    class C:
+        x: int = Field(3)
 
-        @component
-        class F:
-            def __configure__(self, test, config):
-                pass
+        def __pre_configure__(self, conf):
+            assert not self.__component_configured__
+            if "x" in conf:
+                conf["x"] = conf["x"] * 2
+            return conf
+
+    instance = C()
+    configure(instance, {})
+    assert instance.x == 3
+
+    instance = C()
+    configure(instance, {"x": 7})
+    assert instance.x == 14
 
 
 def test_component_pre_configure_setattr():
@@ -805,6 +765,29 @@ def test_component_pre_configure_setattr_with_nesting():
     assert instance.a == 0
     assert instance.child_1.a == 0
     assert instance.child_2.a == 5
+
+
+def test_component_configure_breadth_first():
+    """See https://github.com/larq/zookeeper/issues/226."""
+
+    @component
+    class GrandChild:
+        a: int = Field(5)
+
+    @component
+    class Child:
+        grand_child: GrandChild = ComponentField()
+
+    @component
+    class Parent:
+        child: Child = ComponentField(Child)
+        grand_child: GrandChild = ComponentField(GrandChild)
+
+    p = Parent()
+    configure(p, {"grand_child.a": 3})
+
+    assert p.grand_child.a == 3
+    assert p.child.grand_child.a == 3
 
 
 def test_base_hasattr():
