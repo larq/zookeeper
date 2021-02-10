@@ -826,3 +826,21 @@ def test_base_hasattr():
 
     assert not hasattr(instance, "missing_attribute")
     assert base_hasattr(instance, "missing_attribute")
+
+
+def test_component_configure_component_passed_as_config():
+    @component
+    class Child:
+        x: int = Field()  # Inherited from parent
+
+    @component
+    class Parent:
+        x: int = Field(7)
+        child: Child = ComponentField(Child)
+
+    instance = Parent()
+    new_child_instance = Child()
+    configure(instance, {"child": new_child_instance})
+    assert instance.child is new_child_instance
+    assert instance.child.__component_parent__ is instance
+    assert instance.child.x == 7  # This value should be correctly inherited.

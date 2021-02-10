@@ -612,6 +612,14 @@ def configure(
                             conf_field_value = subclass()
                             break
 
+            # If this isn't the case, then it's a user type error, but we don't
+            # throw here and instead let the run-time type-checking take care of
+            # it (which will provide a better error message).
+            if utils.is_component_instance(conf_field_value):
+                # Set the component parent so that field value inheritence will
+                # work correctly.
+                conf_field_value.__component_parent__ = instance
+
             # Set the value on the instance.
             instance.__component_configured_field_values__[
                 field.name
