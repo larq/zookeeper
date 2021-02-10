@@ -420,105 +420,9 @@ def __component_init__(instance, **kwargs):
     ) | set(kwargs)
 
 
-######################
-# Exported functions #
-######################
-
-
-def component(cls: Type):
-    """A decorator which turns a class into a Zookeeper component."""
-
-    if not inspect.isclass(cls):
-        raise TypeError("Only classes can be decorated with @component.")
-
-    if inspect.isabstract(cls):
-        raise TypeError("Abstract classes cannot be decorated with @component.")
-
-    if utils.is_component_class(cls):
-        raise TypeError(
-            f"The class {cls.__name__} is already a component; the @component decorator "
-            "cannot be applied again."
-        )
-
-    if cls.__init__ not in (object.__init__, __component_init__):
-        # A component class could have `__component_init__` as its init method
-        # if it inherits from a component.
-        raise TypeError("Component classes must not define a custom `__init__` method.")
-    cls.__init__ = __component_init__
-
-    if hasattr(cls, "__pre_configure__"):
-        if not callable(cls.__pre_configure__):
-            raise TypeError(
-                "The `__pre_configure__` attribute of a @component class must be a "
-                "method."
-            )
-        call_args = inspect.signature(cls.__pre_configure__).parameters
-        if len(call_args) > 2 or len(call_args) > 1 and "self" not in call_args:
-            raise TypeError(
-                "The `__pre_configure__` method of a @component class must take no "
-                f"arguments except `self` and `conf`, but "
-                f"`{cls.__name__}.__pre_configure__` accepts arguments "
-                f"{tuple(name for name in call_args)}."
-            )
-
-    if hasattr(cls, "__post_configure__"):
-        if not callable(cls.__post_configure__):
-            raise TypeError(
-                "The `__post_configure__` attribute of a @component class must be a "
-                "method."
-            )
-        call_args = inspect.signature(cls.__post_configure__).parameters
-        if len(call_args) > 1 or len(call_args) == 1 and "self" not in call_args:
-            raise TypeError(
-                "The `__post_configure__` method of a @component class must take no "
-                f"arguments except `self`, but `{cls.__name__}.__post_configure__` "
-                f"accepts arguments {tuple(name for name in call_args)}."
-            )
-
-    # Populate `__component_fields__` with all fields defined on this class and
-    # all superclasses. We have to go through the MRO chain and collect them in
-    # reverse order so that they are correctly overriden.
-    fields = {}
-    for base_class in reversed(inspect.getmro(cls)):
-        for name, value in base_class.__dict__.items():
-            if isinstance(value, Field):
-                fields[name] = value
-
-    if len(fields) == 0:
-        utils.warn(f"Component {cls.__name__} has no defined fields.")
-
-    # Throw an error if there is a field defined on a superclass that has been
-    # overriden with a non-Field value.
-    for name in dir(cls):
-        if name in fields and not isinstance(getattr(cls, name), Field):
-            super_class = fields[name].host_component_class
-            raise ValueError(
-                f"Field '{name}' is defined on super-class {super_class.__name__}. "
-                f"In subclass {cls.__name__}, '{name}' has been overriden with value: "
-                f"{getattr(cls, name)}.\n\n"
-                f"If you wish to change the default value of field '{name}' in a "
-                f"subclass of {super_class.__name__}, please wrap the new default "
-                "value in a new `Field` instance."
-            )
-
-    cls.__component_fields__ = fields
-
-    # Override class methods to correctly interact with component fields.
-    _wrap_getattribute(cls)
-    _wrap_setattr(cls)
-    _wrap_delattr(cls)
-    _wrap_dir(cls)
-
-    # Components should have nice `__str__` and `__repr__` methods.
-    cls.__str__ = __component_str__
-    cls.__repr__ = __component_repr__
-
-    # These will be overriden during configuration.
-    cls.__component_name__ = cls.__name__
-    cls.__component_parent__ = None
-    cls.__component_configured__ = False
-
-    return cls
+#####################################
+# Recursive component configuration #
+#####################################
 
 
 def recursively_configure_component_instance(
@@ -712,6 +616,107 @@ def recursively_configure_component_instance(
 
     if hasattr(instance.__class__, "__post_configure__"):
         instance.__post_configure__()
+
+
+######################
+# Exported functions #
+######################
+
+
+def component(cls: Type):
+    """A decorator which turns a class into a Zookeeper component."""
+
+    if not inspect.isclass(cls):
+        raise TypeError("Only classes can be decorated with @component.")
+
+    if inspect.isabstract(cls):
+        raise TypeError("Abstract classes cannot be decorated with @component.")
+
+    if utils.is_component_class(cls):
+        raise TypeError(
+            f"The class {cls.__name__} is already a component; the @component decorator "
+            "cannot be applied again."
+        )
+
+    if cls.__init__ not in (object.__init__, __component_init__):
+        # A component class could have `__component_init__` as its init method
+        # if it inherits from a component.
+        raise TypeError("Component classes must not define a custom `__init__` method.")
+    cls.__init__ = __component_init__
+
+    if hasattr(cls, "__pre_configure__"):
+        if not callable(cls.__pre_configure__):
+            raise TypeError(
+                "The `__pre_configure__` attribute of a @component class must be a "
+                "method."
+            )
+        call_args = inspect.signature(cls.__pre_configure__).parameters
+        if len(call_args) > 2 or len(call_args) > 1 and "self" not in call_args:
+            raise TypeError(
+                "The `__pre_configure__` method of a @component class must take no "
+                f"arguments except `self` and `conf`, but "
+                f"`{cls.__name__}.__pre_configure__` accepts arguments "
+                f"{tuple(name for name in call_args)}."
+            )
+
+    if hasattr(cls, "__post_configure__"):
+        if not callable(cls.__post_configure__):
+            raise TypeError(
+                "The `__post_configure__` attribute of a @component class must be a "
+                "method."
+            )
+        call_args = inspect.signature(cls.__post_configure__).parameters
+        if len(call_args) > 1 or len(call_args) == 1 and "self" not in call_args:
+            raise TypeError(
+                "The `__post_configure__` method of a @component class must take no "
+                f"arguments except `self`, but `{cls.__name__}.__post_configure__` "
+                f"accepts arguments {tuple(name for name in call_args)}."
+            )
+
+    # Populate `__component_fields__` with all fields defined on this class and
+    # all superclasses. We have to go through the MRO chain and collect them in
+    # reverse order so that they are correctly overriden.
+    fields = {}
+    for base_class in reversed(inspect.getmro(cls)):
+        for name, value in base_class.__dict__.items():
+            if isinstance(value, Field):
+                fields[name] = value
+
+    if len(fields) == 0:
+        utils.warn(f"Component {cls.__name__} has no defined fields.")
+
+    # Throw an error if there is a field defined on a superclass that has been
+    # overriden with a non-Field value.
+    for name in dir(cls):
+        if name in fields and not isinstance(getattr(cls, name), Field):
+            super_class = fields[name].host_component_class
+            raise ValueError(
+                f"Field '{name}' is defined on super-class {super_class.__name__}. "
+                f"In subclass {cls.__name__}, '{name}' has been overriden with value: "
+                f"{getattr(cls, name)}.\n\n"
+                f"If you wish to change the default value of field '{name}' in a "
+                f"subclass of {super_class.__name__}, please wrap the new default "
+                "value in a new `Field` instance."
+            )
+
+    cls.__component_fields__ = fields
+
+    # Override class methods to correctly interact with component fields.
+    _wrap_getattribute(cls)
+    _wrap_setattr(cls)
+    _wrap_delattr(cls)
+    _wrap_dir(cls)
+
+    # Components should have nice `__str__` and `__repr__` methods.
+    cls.__str__ = __component_str__
+    cls.__repr__ = __component_repr__
+
+    # These will be overriden during configuration.
+    cls.__component_name__ = cls.__name__
+    cls.__component_parent__ = None
+    cls.__component_configured__ = False
+
+    return cls
 
 
 def configure(
