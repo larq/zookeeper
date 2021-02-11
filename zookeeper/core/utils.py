@@ -16,6 +16,10 @@ class Missing:
 missing = Missing()
 
 
+class ConfigurationError(Exception):
+    pass
+
+
 def warn(message: str) -> None:
     click.secho(f"WARNING: {message}", fg="yellow", err=True)
 
