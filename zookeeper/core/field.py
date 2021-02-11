@@ -275,7 +275,6 @@ class ComponentField(Field, Generic[C, F]):
             # doesn't really exist.
             if self.allow_missing:
                 raise AttributeError(msg)
-
             # If it isn't allow_missing, this is a configuration error, because the
             # attribute does exist, but has no value.
             raise ConfigurationError(msg)
