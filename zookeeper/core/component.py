@@ -425,7 +425,7 @@ def __component_init__(instance, **kwargs):
 #####################################
 
 
-def recursively_configure_component_instance(
+def configure_component_instance(
     instance,
     conf: Dict[str, Any],
     name: str,
@@ -762,7 +762,7 @@ def configure(
         if current_instance.__component_configured__:
             continue
 
-        recursively_configure_component_instance(
+        configure_component_instance(
             current_instance,
             conf=current_conf,
             name=current_name,
