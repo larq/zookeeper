@@ -3,7 +3,7 @@ import inspect
 import click
 
 from zookeeper.core.cli import ConfigParam, cli
-from zookeeper.core.component import component
+from zookeeper.core.component import component, configure
 from zookeeper.core.utils import convert_to_snake_case
 
 
@@ -53,7 +53,7 @@ def task(cls):
     def command(config, interactive):
         config = {k: v for k, v in config}
         task_instance = cls()
-        task_instance.__configure__(config, interactive=interactive)
+        configure(task_instance, config, interactive=interactive)
         task_instance.run()
 
     return cls
