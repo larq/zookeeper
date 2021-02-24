@@ -34,7 +34,7 @@ setup(
             "isort==5.7.0",
             "pytest>=4.3.1",
             "pytest-cov>=2.6.1",
-            "pytype>=2019.10.17,<2020.11.0",
+            "pytype>=2019.10.17,<2021.3.0",
         ],
     },
     classifiers=[
