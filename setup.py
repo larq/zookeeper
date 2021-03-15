@@ -30,7 +30,7 @@ setup(
         "test": [
             "black==20.8b1",
             "docformatter>=1.4",
-            "flake8>=3.7.9,<3.9.0",
+            "flake8>=3.7.9,<3.10.0",
             "isort==5.7.0",
             "pytest>=4.3.1",
             "pytest-cov>=2.6.1",
