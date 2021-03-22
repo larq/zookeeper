@@ -31,7 +31,7 @@ setup(
             "black==20.8b1",
             "docformatter>=1.4",
             "flake8>=3.7.9,<3.10.0",
-            "isort==5.7.0",
+            "isort==5.8.0",
             "pytest>=4.3.1",
             "pytest-cov>=2.6.1",
             "pytype>=2019.10.17,<2021.4.0",
