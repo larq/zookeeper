@@ -85,15 +85,6 @@ from zookeeper.core.factory_registry import FACTORY_REGISTRY
 from zookeeper.core.field import ComponentField, Field
 from zookeeper.core.utils import ConfigurationError
 
-try:  # pragma: no cover
-    from colorama import Fore, Style
-
-    RED, YELLOW = Fore.RED, Fore.YELLOW
-    BRIGHT, RESET_ALL = Style.BRIGHT, Style.RESET_ALL
-except ImportError:  # pragma: no cover
-    BRIGHT = RED = RESET_ALL = YELLOW = ""
-
-
 ###################################
 # Component class method wrappers #
 ###################################
