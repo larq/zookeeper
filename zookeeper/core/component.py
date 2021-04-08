@@ -78,7 +78,7 @@ print(c)
 
 import functools
 import inspect
-from typing import AbstractSet, Any, Dict, Iterator, List, Optional, Type
+from typing import AbstractSet, Any, Dict, Iterator, List, Optional, Tuple, Type
 
 from zookeeper.core import utils
 from zookeeper.core.factory_registry import FACTORY_REGISTRY
@@ -303,6 +303,84 @@ def _wrap_dir(component_cls: Type) -> None:
     component_cls.__dir__ = wrapped_fn
 
 
+######################################
+# Implement the `ItemsView` protocol #
+######################################
+
+# Implementing these three methods makes `dict(component_instance)`,
+# `list(component_instance)`, et cetera be something sensible.
+#
+# In particular, `dict(component_instance)` has field names as keys and field
+# values as values, giving a flattened view of the entire component tree
+# including all sub-components. This dictionary is precisely the configuration
+# that is required to completely re-create the component, including all
+# sub-components, i.e. `configure(new_instance, dict(old_instance))`.
+
+
+def __component_len__(instance) -> int:
+    return len(list(iter(instance)))
+
+
+def __component_contains__(instance, key: str) -> bool:
+    if not isinstance(key, str):
+        return False
+
+    if "." not in key:
+        # The base case is whether or not this is a component field defined
+        # on this class, that also has a value in scope (which excludes the
+        # `allow_missing` fields without a configured value).
+        return (
+            key in instance.__component_fields__
+            and key in instance.__component_fields_with_values_in_scope__
+        )
+
+    # The recusive case is to split the key and check the sub-component.
+    key_prefix = key.split(".")[0]
+    if isinstance(instance.__component_fields__.get(key_prefix, None), ComponentField):
+        try:
+            sub_component = base_getattr(instance, key_prefix)
+            if utils.is_component_instance(sub_component):
+                return key[len(key_prefix) + 1 :] in sub_component
+        except AttributeError:
+            pass
+
+    return False
+
+
+def __component_iter__(instance) -> Iterator[Tuple[str, Any]]:
+    for field_name, field in instance.__component_fields__.items():
+        # Get the field value. If there's an attribute error (possible
+        # because of `allow_missing`), just skip.
+        try:
+            field_value = base_getattr(instance, field_name)
+        except AttributeError:
+            continue
+
+        # Check if the value is inherited and if so skip.
+        parent_instance = next(
+            utils.generate_component_ancestors_with_field(instance, field_name),
+            None,
+        )
+        if (
+            parent_instance is not None
+            and base_getattr(parent_instance, field_name) is field_value
+        ):
+            continue
+
+        # If this is *not* a sub-component, yield the value directly.
+        if not isinstance(field, ComponentField) or not utils.is_component_instance(
+            field_value
+        ):
+            yield field_name, field_value
+
+        # Otherwise, yield the name of the sub-component class and
+        # recursively yield from the sub-component.
+        else:
+            yield field_name, field_value.__class__.__qualname__
+            for sub_field_name, sub_field_value in iter(field_value):
+                yield f"{field_name}.{sub_field_name}", sub_field_value
+
+
 #################################
 # Pretty string representations #
 #################################
@@ -495,7 +573,7 @@ def configure_component_instance(
         # If the field explicitly allows values to be missing, there's no need
         # to do anything.
         elif field.allow_missing:
-            pass
+            continue
 
         # If there is only one concrete component subclass of the annotated
         # type, we assume the user must intend to use that subclass, and so
@@ -705,6 +783,19 @@ def component(cls: Type):
     _wrap_setattr(cls)
     _wrap_delattr(cls)
     _wrap_dir(cls)
+
+    # Implement the `ItemsView` protocol
+    if hasattr(cls, "__len__") and cls.__len__ != __component_len__:
+        raise TypeError("Component classes must not define a custom `__len__` method.")
+    cls.__len__ = __component_len__
+    if hasattr(cls, "__contains__") and cls.__contains__ != __component_contains__:
+        raise TypeError(
+            "Component classes must not define a custom `__contains__` method."
+        )
+    cls.__contains__ = __component_contains__
+    if hasattr(cls, "__iter__") and cls.__iter__ != __component_iter__:
+        raise TypeError("Component classes must not define a custom `__iter__` method.")
+    cls.__iter__ = __component_iter__
 
     # Components should have nice `__str__` and `__repr__` methods.
     cls.__str__ = __component_str__

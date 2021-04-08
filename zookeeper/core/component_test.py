@@ -262,6 +262,159 @@ def test_configure_interactive_prompt_for_subcomponent_choice():
         prompt.assert_called_once()
 
 
+def test_len():
+    with pytest.raises(
+        TypeError, match="Component classes must not define a custom `__len__` method."
+    ):
+
+        @component
+        class InvalidComponent:
+            def __len__():
+                return
+
+    @component
+    class Component:
+        a: int = Field()
+        b: Tuple[int, float] = Field((5, -42.3))
+        c: str = Field(allow_missing=True)
+
+    instance = Component()
+    configure(instance, {"a": 10})
+    # When a field is `allow_missing` it should not be counted.
+    assert len(instance) == 2
+
+    instance = Component()
+    configure(instance, {"a": 10, "c": "foo"})
+    # But when the `allow_missing` field gets assigned a value it should be
+    # counted.
+    assert len(instance) == 3
+
+
+def test_contains():
+    with pytest.raises(
+        TypeError,
+        match="Component classes must not define a custom `__contains__` method.",
+    ):
+
+        @component
+        class InvalidComponent:
+            def __contains__():
+                return
+
+    @component
+    class Child:
+        a: int = Field()
+        b: Tuple[int, float] = Field()
+        c: str = Field(allow_missing=True)
+
+    @component
+    class Parent:
+        a: int = Field()
+        b: Tuple[int, float] = Field((5, -42.3))
+        child: Child = ComponentField()
+
+    instance = Parent()
+    configure(instance, {"a": 10, "child.b": (-1, 0.0)})
+    assert "a" in instance
+    assert "b" in instance
+    assert "child" in instance
+    assert "child.a" in instance
+    assert "child.b" in instance
+    assert "child.c" not in instance
+
+    instance = Parent()
+    configure(instance, {"a": 10, "child.b": (-1, 0.0), "child.c": "foo"})
+    assert "a" in instance
+    assert "b" in instance
+    assert "child" in instance
+    assert "child.a" in instance
+    assert "child.b" in instance
+    assert "child.c" in instance
+
+
+def test_iter():
+    with pytest.raises(
+        TypeError, match="Component classes must not define a custom `__iter__` method."
+    ):
+
+        @component
+        class InvalidComponent:
+            def __iter__():
+                return
+
+    @component
+    class Child:
+        a: int = Field()
+        b: Tuple[int, float] = Field()
+        c: str = Field(allow_missing=True)
+
+    @component
+    class Parent:
+        a: int = Field()
+        b: Tuple[int, float] = Field((5, -42.3))
+        child: Child = ComponentField()
+
+    # When no configured value is provided for `child.c`, there should be four
+    # values in the iterator: `a` and `b` and `child` on the parent, and `b` on
+    # the child. Notice that the `a` on the child (i.e. `child.a`) is not
+    # included, because that value is inherited from the parent.
+    instance = Parent()
+    configure(instance, {"a": 10, "child.b": (-1, 0.0)})
+    assert list(iter(instance)) == [
+        ("a", 10),
+        ("b", (5, -42.3)),
+        ("child", "test_iter.<locals>.Child"),
+        ("child.b", (-1, 0.0)),
+    ]
+
+    # The only difference from the above is that `child.c` should be included.
+    instance = Parent()
+    configure(instance, {"a": 10, "child.b": (-1, 0.0), "child.c": "foo"})
+    assert list(iter(instance)) == [
+        ("a", 10),
+        ("b", (5, -42.3)),
+        ("child", "test_iter.<locals>.Child"),
+        ("child.b", (-1, 0.0)),
+        ("child.c", "foo"),
+    ]
+
+
+def test_itemsview_protocol():
+    @component
+    class Child:
+        a: int = Field()
+        b: Tuple[int, float] = Field()
+        c: str = Field(allow_missing=True)
+
+    @component
+    class Parent:
+        a: int = Field()
+        b: Tuple[int, float] = Field((5, -42.3))
+        child: Child = ComponentField()
+
+    instance = Parent()
+    configure(instance, {"a": 10, "child.b": (-1, 0.0)})
+
+    instance_dict = dict(instance)
+
+    # Check it's what we expect
+    assert instance_dict == {
+        "a": 10,
+        "b": (5, -42.3),
+        "child": "test_itemsview_protocol.<locals>.Child",
+        "child.b": (-1, 0.0),
+    }
+
+    # Check that, using the old config, we can instantiate and configure an
+    # identical component tree.
+    new_instance = Parent()
+    configure(new_instance, instance_dict)
+    assert new_instance.a == instance.a
+    assert new_instance.b == instance.b
+    assert new_instance.child.a == instance.child.a
+    assert new_instance.child.b == instance.child.b
+
+
 def test_str_and_repr():
     """`__str__` and `__repr__` should give formatted strings that represent nested
     components nicely."""
