@@ -19,9 +19,9 @@ setup(
     license="Apache 2.0",
     python_requires=">=3.6",
     install_requires=[
-        "click>=7.0",
-        "tensorflow-datasets>=1.3.0",
-        "typeguard>=2.5.1",
+        "click>=7.0,<8.1.0",
+        "tensorflow-datasets>=1.3.0,<4.3.0",
+        "typeguard>=2.5.1,<2.13.0",
         "importlib-metadata ~= 2.0 ; python_version<'3.8'",
     ],
     extras_require={
@@ -29,12 +29,12 @@ setup(
         "tensorflow_gpu": ["tensorflow-gpu>=1.14.0"],
         "test": [
             "black==21.5b0",
-            "docformatter>=1.4",
-            "flake8>=3.7.9,<3.10.0",
+            "docformatter==1.4",
+            "flake8==3.9.2",
             "isort==5.8.0",
-            "pytest>=4.3.1",
-            "pytest-cov>=2.6.1",
-            "pytype>=2019.10.17,<2021.6.0",
+            "pytest==6.2.4",
+            "pytest-cov==2.12.0",
+            "pytype==2021.5.14",
         ],
     },
     classifiers=[
