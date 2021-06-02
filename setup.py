@@ -33,7 +33,7 @@ setup(
             "flake8==3.9.2",
             "isort==5.8.0",
             "pytest==6.2.4",
-            "pytest-cov==2.12.0",
+            "pytest-cov==2.12.1",
             "pytype==2021.5.25",
         ],
     },
