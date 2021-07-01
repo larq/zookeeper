@@ -20,7 +20,7 @@ setup(
     python_requires=">=3.6",
     install_requires=[
         "click>=7.0,<8.1.0",
-        "tensorflow-datasets>=1.3.0,<4.4.0",
+        "tfds-nightly",
         "typeguard>=2.5.1,<2.13.0",
         "importlib-metadata ~= 2.0 ; python_version<'3.8'",
     ],
