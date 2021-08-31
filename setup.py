@@ -32,7 +32,7 @@ setup(
             "docformatter==1.4",
             "flake8==3.9.2",
             "isort==5.9.3",
-            "pytest==6.2.4",
+            "pytest==6.2.5",
             "pytest-cov==2.12.1",
             "pytype==2021.8.11",
         ],
