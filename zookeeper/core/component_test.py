@@ -821,6 +821,25 @@ def test_component_pre_configure():
     configure(instance, {"x": 7})
     assert instance.x == 14
 
+    @component
+    class Child:
+        a: int = Field(4)
+
+    @component
+    class Parent:
+        a: int = Field(2)
+        child: Child = ComponentField()
+
+        def __pre_configure__(self, conf):
+            if "a" in conf:
+                return {"child.a": conf["a"] * 7, **conf}
+            return conf
+
+    parent = Parent()
+    configure(parent, {"a": 6})
+    assert parent.a == 6
+    assert parent.child.a == 42
+
 
 def test_component_pre_configure_setattr():
     @component
