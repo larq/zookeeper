@@ -694,6 +694,8 @@ def configure_component_instance(
     if hasattr(instance.__class__, "__post_configure__"):
         instance.__post_configure__()
 
+    return conf
+
 
 ######################
 # Exported functions #
@@ -852,7 +854,7 @@ def configure(
         if current_instance.__component_configured__:
             continue
 
-        configure_component_instance(
+        current_conf = configure_component_instance(
             current_instance,
             conf=current_conf,
             name=current_name,
