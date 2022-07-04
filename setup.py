@@ -20,7 +20,7 @@ setup(
     python_requires=">=3.6",
     install_requires=[
         "click>=7.0,<8.2.0",
-        "tensorflow-datasets>=1.3.0,<4.6.0",
+        "tensorflow-datasets>=1.3.0,<4.7.0",
         "typeguard>=2.5.1,<2.14.0",
         "importlib-metadata ~= 2.0 ; python_version<'3.8'",
     ],
@@ -28,13 +28,13 @@ setup(
         "tensorflow": ["tensorflow>=1.14.0"],
         "tensorflow_gpu": ["tensorflow-gpu>=1.14.0"],
         "test": [
-            "black==22.1.0",
+            "black==22.6.0",
             "docformatter==1.4",
             "flake8==4.0.1",
             "isort==5.10.1",
             "pytest==7.0.1",
             "pytest-cov==3.0.0",
-            "pytype==2021.10.25",
+            "pytype>=2022.01.05",
         ],
     },
     classifiers=[
