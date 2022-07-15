@@ -8,7 +8,7 @@ import pytest
 from zookeeper.core.component import base_hasattr, component, configure
 from zookeeper.core.factory import factory
 from zookeeper.core.field import ComponentField, Field
-from zookeeper.core.utils import ConfigurationError
+from zookeeper.core.utils import ConfigurationError, configuration_mode
 
 
 @pytest.fixture
@@ -17,6 +17,9 @@ def ExampleComponentClass():
     class A:
         a: int = Field()
         b: str = Field("foo")
+
+        def __init__(self):
+            self.c = 2
 
     return A
 
@@ -45,31 +48,17 @@ def test_abstract_class_decorate_error():
                 pass
 
 
-def test_init_decorate_error():
-    """An error should be raised when attempting to decorate a class with an `__init__`
-    method."""
-    with pytest.raises(
-        TypeError,
-        match="Component classes must not define a custom `__init__` method.",
-    ):
-
-        @component
-        class A:
-            def __init__(self, a, b=5):
-                self.a = a
-                self.b = b
-
-
-def test_no_init(ExampleComponentClass):
-    """If the decorated class does not have an `__init__` method, the decorated class
-    should define an `__init__` which accepts kwargs to set field values, and raises
-    appropriate arguments when other values are passed."""
+def test_component_init(ExampleComponentClass):
+    """The decorated class should define an `__init__` which accepts kwargs to set field
+    values, and raises appropriate arguments when other values are passed."""
 
     x = ExampleComponentClass(a=2)
+    configure(x, {})
     assert x.a == 2
     assert x.b == "foo"
 
     x = ExampleComponentClass(a=0, b="bar")
+    configure(x, {})
     assert x.a == 0
     assert x.b == "bar"
 
@@ -89,6 +78,97 @@ def test_no_init(ExampleComponentClass):
         ),
     ):
         ExampleComponentClass(some_other_field_name=0)
+
+
+def test_user_init(ExampleComponentClass):
+    """The user-defined `__init__` method should be called exactly once, after
+    configuration."""
+
+    x = ExampleComponentClass()
+    descriptor = ExampleComponentClass.__init__
+    with patch.object(
+        descriptor, "original_init", wraps=descriptor.original_init
+    ) as user_init:
+        user_init.assert_not_called()
+        print(user_init)
+
+        configure(x, {"a": 0, "b": "bar"})
+
+        # The user-defined `__init__` method is called after configuration.
+        # No other argument other than `self` should have been passed!
+        user_init.assert_called_once_with(x)
+
+        # These should now all exist.
+        assert x.a == 0
+        assert x.b == "bar"
+        assert x.c == 2
+
+
+def test_user_init_subclass():
+    """If we have a set of component subclasses, with a customn `__init__` that calls
+    `super().__init__()`, these should all be resolved correctly."""
+
+    class Base:
+        def __init__(self):
+            self.base = 4
+            super().__init__()
+
+    @component
+    class Top(Base):
+        def __init__(self):
+            self.top = 3
+            super().__init__()
+
+    @component
+    class Middle(Top):
+        def __init__(self):
+            self.middle = 2
+            super().__init__()
+
+    @component
+    class Bottom(Middle):
+        def __init__(self):
+            self.bottom = 1
+            super().__init__()
+
+    b = Bottom()
+    configure(b, {})
+
+    # Each of the __init__ functions should have been called without errors, so these
+    # values should all be set.
+    assert b.base == 4
+    assert b.top == 3
+    assert b.middle == 2
+    assert b.bottom == 1
+
+
+def test_init_signature_error():
+    """An error should be raised when attempting to decorate a class with an `__init__`
+    method that takes any arguments other than `self`."""
+    with pytest.raises(
+        TypeError,
+        match="The `__init__` method of a @component class must take no arguments except `self`",
+    ):
+
+        @component
+        class A:
+            def __init__(self, a, b=5):
+                self.a = a
+                self.b = b
+
+    with pytest.raises(
+        TypeError,
+        match="The `__init__` method of a @component class must take no arguments except `self`",
+    ):
+
+        @component
+        class B:
+            def __init__(var):
+                pass
+
+
+def test_init():
+    pass
 
 
 def test_configure_override_field_values(ExampleComponentClass):
@@ -471,7 +551,6 @@ def test_type_check(ExampleComponentClass):
     """During configuration we should type-check all field values."""
 
     instance = ExampleComponentClass()
-
     configure(instance, {"a": 4.5}, name="x")
 
     # Attempting to access the field should now raise a type error.
@@ -529,14 +608,21 @@ def test_component_field_factory_type_check(capsys):
         base: Tuple[float, float, float] = ComponentField(F3)
 
     # These should succeed.
-    A1().base
-    A2().base
+    a1 = A1()
+    configure(a1, {})
+    a1.base
+
+    a2 = A2()
+    configure(a2, {})
+    a2.base
 
     # Do this here to drop any already captured output.
     capsys.readouterr()
 
     # This should succeed, but without a type-check (should print a warning)
-    A3().base
+    a3 = A3()
+    configure(a3, {})
+    a3.base
     captured = capsys.readouterr()
     assert (
         captured.err
@@ -616,20 +702,33 @@ def test_component_post_configure():
             def __post_configure__(self, x):
                 pass
 
+    with pytest.raises(
+        TypeError,
+        match="C has a deprecated `__post_configure__` method as well as a custom `__init__`! Only one can be defined at a time.",
+    ):
+
+        @component
+        class C:
+            def __init__(self):
+                super().__init__()
+
+            def __post_configure__(self):
+                pass
+
     # This definition should succeed.
     @component
-    class C:
+    class D:
         a: int = Field(0)
         b: float = Field(3.14)
 
         def __post_configure__(self):
-            self.c = self.a + self.b
+            self.d = self.a + self.b
 
-    c = C()
+    d = D()
 
-    configure(c, {"a": 1, "b": -3.14})
+    configure(d, {"a": 1, "b": -3.14})
 
-    assert c.c == 1 - 3.14
+    assert d.d == 1 - 3.14
 
 
 def test_component_configure_error_non_existant_key():
@@ -923,15 +1022,19 @@ def test_component_pre_configure_setattr_with_nesting():
         a: int = Field(5)
 
     instance = Parent(a=100)
-    assert instance.a == 100
-    assert instance.child_1.a == 100
-    assert instance.child_2.a == -1
+    with configuration_mode():
+        assert instance.a == 100
+        assert instance.child_1.a == 100
+        assert instance.child_2.a == -1
 
+    # Setting an attribute is allowed even if the component is not yet configured.
     instance.a = 2020
-    instance.child_2.a = -7
-    assert instance.a == 2020
-    assert instance.child_1.a == 2020
-    assert instance.child_2.a == -7
+    # But accessing them is not.
+    with configuration_mode():
+        instance.child_2.a = -7
+        assert instance.a == 2020
+        assert instance.child_1.a == 2020
+        assert instance.child_2.a == -7
 
     configure(instance, {"a": 0, "child_2.a": 5})
     assert instance.a == 0
@@ -970,17 +1073,18 @@ def test_base_hasattr():
         with_value: int = Field(0)
 
     instance = A()
-    assert hasattr(instance, "with_value")
-    assert base_hasattr(instance, "with_value")
-    assert not base_hasattr(instance, "fake_attribute")
+    with configuration_mode():
+        assert hasattr(instance, "with_value")
+        assert base_hasattr(instance, "with_value")
+        assert not base_hasattr(instance, "fake_attribute")
 
-    with pytest.raises(ConfigurationError):
-        hasattr(instance, "attribute")
+        with pytest.raises(ConfigurationError):
+            hasattr(instance, "attribute")
 
-    assert base_hasattr(instance, "attribute")
+        assert base_hasattr(instance, "attribute")
 
-    assert not hasattr(instance, "missing_attribute")
-    assert base_hasattr(instance, "missing_attribute")
+        assert not hasattr(instance, "missing_attribute")
+        assert base_hasattr(instance, "missing_attribute")
 
 
 def test_component_configure_component_passed_as_config():
@@ -999,3 +1103,32 @@ def test_component_configure_component_passed_as_config():
     assert instance.child is new_child_instance
     assert instance.child.__component_parent__ is instance
     assert instance.child.x == 7  # This value should be correctly inherited.
+
+
+def test_no_unconfigured_access():
+    @component
+    class TestComponent:
+        var: int = Field(5)
+
+        def __call__(self, *args):
+            print("This is valid, but can only be used after configuration.")
+            self.called = True
+
+    x = TestComponent()
+
+    with pytest.raises(
+        ConfigurationError,
+        match="Please call `configure` before accessing any attributes.",
+    ):
+        print(x.var)
+
+    with pytest.raises(
+        ConfigurationError,
+        match="Please call `configure` before calling this component",
+    ):
+        x()
+
+    configure(x, {})
+    assert x.var == 5
+    x()
+    assert x.called

@@ -78,12 +78,100 @@ print(c)
 
 import functools
 import inspect
+import logging
 from typing import AbstractSet, Any, Dict, Iterator, List, Optional, Tuple, Type
 
 from zookeeper.core import utils
 from zookeeper.core.factory_registry import FACTORY_REGISTRY
 from zookeeper.core.field import ComponentField, Field
-from zookeeper.core.utils import ConfigurationError
+from zookeeper.core.utils import (
+    ConfigurationError,
+    configuration_mode,
+    in_configuration_mode,
+)
+
+
+##########################
+# A component `__init__` #
+##########################
+class ComponentInit:
+    """
+    We wrap both the original __init__ and the __component_init__ in this descriptor.
+    If we would simply store e.g. `__original__init` on every component, we
+    would run into problems with resolution of calls to `super().__init__()`, since they
+    would trigger `__component_init__` on the parent class again, with the same value
+    for the `instance` argument.
+
+    By using a descriptor, we can effectively create a different `__component_init__`
+    for every class, and thus make sure that `super().__init__()` refers to the correct
+    function.
+    """
+
+    def __init__(self, original_init):
+        self.original_init = original_init
+
+    @staticmethod
+    def __component_init__(instance, **kwargs):
+        """Accepts keyword-arguments corresponding to fields defined on the component."""
+
+        # Use the `kwargs` to set field values.
+        for name, value in kwargs.items():
+            if name not in instance.__component_fields__:
+                raise TypeError(
+                    "Keyword arguments passed to component `__init__` must correspond to "
+                    f"component fields. Received non-matching argument '{name}'."
+                )
+            if utils.is_component_instance(value):
+                if value.__component_configured__:
+                    raise ValueError(
+                        "Sub-component instances passed to the `__init__` method of a "
+                        "component must not already be configured. Received configured "
+                        f"component argument '{name}={repr(value)}'."
+                    )
+                # Set the component parent correctly if the value being passed in
+                # does not already have a parent.
+                if value.__component_parent__ is None:
+                    value.__component_parent__ = instance
+
+        # This will contain default field values from the fields defined on this
+        # instance.
+        instance.__component_default_field_values__ = {}
+
+        # Save a shallow-clone of the arguments.
+        instance.__component_instantiated_field_values__ = {**kwargs}
+
+        # This will contain configured field values that apply to this instance, if
+        # any, which override everything else.
+        instance.__component_configured_field_values__ = {}
+
+        # This will contain the names of every field of this instance and all
+        # component ancestors for which a value is defined. More names will be added
+        # during configuration.
+        instance.__component_fields_with_values_in_scope__ = set(
+            field.name
+            for field in instance.__component_fields__.values()
+            if field.has_default
+        ) | set(kwargs)
+
+    def __get__(self, instance, type=None):
+        """`instance` is the instance on which `__init__` is called. If the instance
+        has not yet been configured, we defer to `__component_init__`. If it has been
+        configured, we defer to `self.original_init` instead to execute the user's code.
+        """
+        if instance is None:
+            # This happens when we call `__init__` on the class, e.g. `A.__init__`.
+            # In that case, we want to just access the descriptor for testing purposes.
+            return self
+
+        if not instance.__component_configured__:
+            f = functools.partial(self.__component_init__, instance)
+            f = functools.update_wrapper(f, self.__component_init__)
+        else:
+            f = functools.partial(self.original_init, instance)
+            f = functools.update_wrapper(f, self.original_init)
+
+        return f
+
 
 ###################################
 # Component class method wrappers #
@@ -102,6 +190,39 @@ def _type_check_and_maybe_cache(instance, field: Field, result: Any) -> None:
 
     if instance.__component_configured__:
         object.__setattr__(instance, field.name, result)
+
+
+def _wrap_init(component_cls: Type) -> None:
+    # If `__init__` is a ComponentInit, we don't want to call that.
+    # This means we subclass another component, in which case we want to call the
+    # original init of the parent class.
+    if isinstance(component_cls.__init__, ComponentInit):
+        original_init = component_cls.__init__.original_init
+    # Otherwise, keep track of any user `__init__`so we can call it after configuration.
+    else:
+        original_init = component_cls.__init__
+        if original_init is not object.__init__:
+            if not callable(original_init):
+                raise TypeError(
+                    "The `__init__` attribute of a @component class must be a method."
+                )
+            call_args = inspect.signature(original_init).parameters
+            if len(call_args) > 1 or len(call_args) == 1 and "self" not in call_args:
+                raise TypeError(
+                    "The `__init__` method of a @component class must take no "
+                    f"arguments except `self`, but `{component_cls.__name__}.__init__` "
+                    f"accepts arguments {tuple(name for name in call_args)}."
+                )
+
+            if hasattr(component_cls, "__post_configure__"):
+                raise TypeError(
+                    f"{component_cls.__name__} has a deprecated `__post_configure__` method"
+                    " as well as a custom `__init__`! Only one can be defined at a time."
+                )
+
+    # Set __init__ to the ComponentInit descriptor, so that it will resolve correctly
+    # based on the configuration state of the component.
+    component_cls.__init__ = ComponentInit(original_init=original_init)
 
 
 def _wrap_getattribute(component_cls: Type) -> None:
@@ -142,6 +263,16 @@ def _wrap_getattribute(component_cls: Type) -> None:
 
     @functools.wraps(fn)
     def base_wrapped_fn(instance, name):
+        if (
+            not in_configuration_mode()
+            and not name.startswith("__")
+            and not instance.__component_configured__
+        ):
+            raise ConfigurationError(
+                f"Component '{instance.__component_name__}' has not been configured yet!"
+                " Please call `configure` before accessing any attributes."
+            )
+
         # If this is not an access to a field, return via the wrapped function.
         if name not in fn(instance, "__component_fields__"):
             return fn(instance, name)
@@ -303,6 +434,25 @@ def _wrap_dir(component_cls: Type) -> None:
     component_cls.__dir__ = wrapped_fn
 
 
+def _wrap_call(component_cls: Type) -> None:
+    # We only wrap the call function if there was one to begin with.
+    if not hasattr(component_cls, "__call__"):
+        return
+
+    fn = component_cls.__call__  # type: ignore
+
+    @functools.wraps(fn)
+    def wrapped_fn(instance, *args, **kwargs) -> List[str]:
+        if not instance.__component_configured__:
+            raise ConfigurationError(
+                f"Component '{instance.__component_name__}' has not been configured yet!"
+                " Please call `configure` before calling this component."
+            )
+        return fn(instance, *args, **kwargs)
+
+    component_cls.__call__ = wrapped_fn
+
+
 ######################################
 # Implement the `ItemsView` protocol #
 ######################################
@@ -439,54 +589,6 @@ def __component_str__(instance):
         _list_field_strings(instance, color=True, single_line=False)
     )
     return f"{instance.__class__.__name__}(\n{INDENT}{joined_str}\n)"
-
-
-##########################
-# A component `__init__` #
-##########################
-
-
-def __component_init__(instance, **kwargs):
-    """Accepts keyword-arguments corresponding to fields defined on the component."""
-
-    # Use the `kwargs` to set field values.
-    for name, value in kwargs.items():
-        if name not in instance.__component_fields__:
-            raise TypeError(
-                "Keyword arguments passed to component `__init__` must correspond to "
-                f"component fields. Received non-matching argument '{name}'."
-            )
-        if utils.is_component_instance(value):
-            if value.__component_configured__:
-                raise ValueError(
-                    "Sub-component instances passed to the `__init__` method of a "
-                    "component must not already be configured. Received configured "
-                    f"component argument '{name}={repr(value)}'."
-                )
-            # Set the component parent correctly if the value being passed in
-            # does not already have a parent.
-            if value.__component_parent__ is None:
-                value.__component_parent__ = instance
-
-    # This will contain default field values from the fields defined on this
-    # instance.
-    instance.__component_default_field_values__ = {}
-
-    # Save a shallow-clone of the arguments.
-    instance.__component_instantiated_field_values__ = {**kwargs}
-
-    # This will contain configured field values that apply to this instance, if
-    # any, which override everything else.
-    instance.__component_configured_field_values__ = {}
-
-    # This will contain the names of every field of this instance and all
-    # component ancestors for which a value is defined. More names will be added
-    # during configuration.
-    instance.__component_fields_with_values_in_scope__ = set(
-        field.name
-        for field in instance.__component_fields__.values()
-        if field.has_default
-    ) | set(kwargs)
 
 
 #####################################
@@ -694,6 +796,9 @@ def configure_component_instance(
     if hasattr(instance.__class__, "__post_configure__"):
         instance.__post_configure__()
 
+    # This calls the original init of the instance rather than __component_init__.
+    instance.__init__()  # TODO: Should we support any arguments?
+
     return conf
 
 
@@ -717,11 +822,7 @@ def component(cls: Type):
             "cannot be applied again."
         )
 
-    if cls.__init__ not in (object.__init__, __component_init__):
-        # A component class could have `__component_init__` as its init method
-        # if it inherits from a component.
-        raise TypeError("Component classes must not define a custom `__init__` method.")
-    cls.__init__ = __component_init__
+    _wrap_init(cls)
 
     if hasattr(cls, "__pre_configure__"):
         if not callable(cls.__pre_configure__):
@@ -739,6 +840,10 @@ def component(cls: Type):
             )
 
     if hasattr(cls, "__post_configure__"):
+        logging.warning(
+            f"{cls.__name__} has a deprecated `__post_configure__` method! "
+            "Rename it to __init__ instead, the functionality is the same."
+        )
         if not callable(cls.__post_configure__):
             raise TypeError(
                 "The `__post_configure__` attribute of a @component class must be a "
@@ -785,6 +890,7 @@ def component(cls: Type):
     _wrap_setattr(cls)
     _wrap_delattr(cls)
     _wrap_dir(cls)
+    _wrap_call(cls)
 
     # Implement the `ItemsView` protocol
     if hasattr(cls, "__len__") and cls.__len__ != __component_len__:
@@ -823,87 +929,93 @@ def configure(
     overwrite any values already set on the instance - either class defaults
     or those set in `__init__`.
     """
-    # Only component instances can be configured.
-    if not utils.is_component_instance(instance):
-        raise TypeError(
-            "Only @component, @factory, and @task instances can be configured. "
-            f"Received: {instance}."
-        )
 
-    # Configuration can only happen once.
-    if instance.__component_configured__:
-        raise ValueError(
-            f"Component '{instance.__component_name__}' has already been configured."
-        )
+    # Enable configuration mode to signal that we're allowed to access unconfigured
+    # components
+    with configuration_mode():
+        # Only component instances can be configured.
+        if not utils.is_component_instance(instance):
+            raise TypeError(
+                "Only @component, @factory, and @task instances can be configured. "
+                f"Received: {instance}."
+            )
 
-    # Maintain a FIFO queue of component instances that need to be configured,
-    # along with the config dict, name that should be passed, and a set of field
-    # names that are in-scope for component field inheritence.
-    #     This queue allows us to recursively configure component instances in
-    # the component tree in a top-down, breadth-first order.
-    fifo_component_queue = [(instance, conf, name, frozenset(conf.keys()))]
+        # Configuration can only happen once.
+        if instance.__component_configured__:
+            raise ValueError(
+                f"Component '{instance.__component_name__}' has already been configured."
+            )
 
-    while len(fifo_component_queue) > 0:
-        (
-            current_instance,
-            current_conf,
-            current_name,
-            current_fields_in_scope,
-        ) = fifo_component_queue.pop(0)
+        # Maintain a FIFO queue of component instances that need to be configured,
+        # along with the config dict, name that should be passed, and a set of field
+        # names that are in-scope for component field inheritence.
+        #     This queue allows us to recursively configure component instances in
+        # the component tree in a top-down, breadth-first order.
+        fifo_component_queue = [(instance, conf, name, frozenset(conf.keys()))]
 
-        if current_instance.__component_configured__:
-            continue
+        while len(fifo_component_queue) > 0:
+            (
+                current_instance,
+                current_conf,
+                current_name,
+                current_fields_in_scope,
+            ) = fifo_component_queue.pop(0)
 
-        current_conf = configure_component_instance(
-            current_instance,
-            conf=current_conf,
-            name=current_name,
-            fields_in_scope=current_fields_in_scope,
-            interactive=interactive,
-        )
-
-        # Collect the sub-component instances that need to be recursively
-        # configured, and add them to the queue.
-        for field in current_instance.__component_fields__.values():
-            if not isinstance(field, ComponentField):
+            if current_instance.__component_configured__:
                 continue
 
-            try:
-                sub_component_instance = base_getattr(current_instance, field.name)
-            except (AttributeError, ConfigurationError) as e:
-                if field.allow_missing:
+            current_conf = configure_component_instance(
+                current_instance,
+                conf=current_conf,
+                name=current_name,
+                fields_in_scope=current_fields_in_scope,
+                interactive=interactive,
+            )
+
+            # Collect the sub-component instances that need to be recursively
+            # configured, and add them to the queue.
+            for field in current_instance.__component_fields__.values():
+                if not isinstance(field, ComponentField):
                     continue
-                raise e from None
 
-            if (
-                not utils.is_component_instance(sub_component_instance)
-                or sub_component_instance.__component_configured__
-            ):
-                continue
+                try:
+                    sub_component_instance = base_getattr(current_instance, field.name)
+                except (AttributeError, ConfigurationError) as e:
+                    if field.allow_missing:
+                        continue
+                    raise e from None
 
-            # Generate the configuration dict that will be used with the nested
-            # sub-component. This consists of all keys scoped to `field.name`.
-            sub_component_conf = {
-                a[len(f"{field.name}.") :]: b
-                for a, b in current_conf.items()
-                if a.startswith(f"{field.name}.")
-            }
+                if (
+                    not utils.is_component_instance(sub_component_instance)
+                    or sub_component_instance.__component_configured__
+                ):
+                    continue
 
-            # The name of the sub-component is full-stop-delimited.
-            sub_component_name = f"{current_instance.__component_name__}.{field.name}"
+                # Generate the configuration dict that will be used with the nested
+                # sub-component. This consists of all keys scoped to `field.name`.
+                sub_component_conf = {
+                    a[len(f"{field.name}.") :]: b
+                    for a, b in current_conf.items()
+                    if a.startswith(f"{field.name}.")
+                }
 
-            # At this point the current instance has already been configured so
-            # we know that every one of its fields is in scope.
-            sub_component_fields_in_scope = current_fields_in_scope | frozenset(
-                current_instance.__component_fields__.keys()
-            )
-
-            # Add the sub-component to the end of the queue.
-            fifo_component_queue.append(
-                (
-                    sub_component_instance,
-                    sub_component_conf,
-                    sub_component_name,
-                    sub_component_fields_in_scope,
+                # The name of the sub-component is full-stop-delimited.
+                sub_component_name = (
+                    f"{current_instance.__component_name__}.{field.name}"
                 )
-            )
+
+                # At this point the current instance has already been configured so
+                # we know that every one of its fields is in scope.
+                sub_component_fields_in_scope = current_fields_in_scope | frozenset(
+                    current_instance.__component_fields__.keys()
+                )
+
+                # Add the sub-component to the end of the queue.
+                fifo_component_queue.append(
+                    (
+                        sub_component_instance,
+                        sub_component_conf,
+                        sub_component_name,
+                        sub_component_fields_in_scope,
+                    )
+                )

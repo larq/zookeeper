@@ -1,6 +1,7 @@
 import inspect
 import re
 from ast import literal_eval
+from contextlib import contextmanager
 from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
 import click
@@ -14,6 +15,26 @@ class Missing:
 
 
 missing = Missing()
+
+# Will be set to True if and only if zookeeper is currently in the process of configuring a component.
+_CONFIGURATION_MODE = False
+
+
+def in_configuration_mode():
+    return _CONFIGURATION_MODE
+
+
+@contextmanager
+def configuration_mode():
+    """Context manager that toggles _CONFIGURATION_MODE."""
+    global _CONFIGURATION_MODE
+    # It may already be True, if we're in a nested context.
+    prev_val = _CONFIGURATION_MODE
+    # But set it to True either way
+    _CONFIGURATION_MODE = True
+    yield
+    # And then set back to the original value.
+    _CONFIGURATION_MODE = prev_val
 
 
 class ConfigurationError(Exception):
