@@ -89,7 +89,7 @@ def test_decorated_field():
 
         @Field
         def bar(self) -> int:
-            return int(self.foo_value ** self.foo_value)
+            return int(self.foo_value**self.foo_value)
 
     instance = A()
 
