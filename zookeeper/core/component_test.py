@@ -8,7 +8,11 @@ import pytest
 from zookeeper.core.component import base_hasattr, component, configure
 from zookeeper.core.factory import factory
 from zookeeper.core.field import ComponentField, Field
-from zookeeper.core.utils import ConfigurationError, configuration_mode
+from zookeeper.core.utils import (
+    ConfigurationError,
+    configuration_mode,
+    in_configuration_mode,
+)
 
 
 @pytest.fixture
@@ -1106,6 +1110,8 @@ def test_component_configure_component_passed_as_config():
 
 
 def test_no_unconfigured_access():
+    assert not in_configuration_mode()
+
     @component
     class TestComponent:
         var: int = Field(5)

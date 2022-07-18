@@ -95,12 +95,11 @@ from zookeeper.core.utils import (
 # A component `__init__` #
 ##########################
 class ComponentInit:
-    """
-    We wrap both the original __init__ and the __component_init__ in this descriptor.
-    If we would simply store e.g. `__original__init` on every component, we
-    would run into problems with resolution of calls to `super().__init__()`, since they
-    would trigger `__component_init__` on the parent class again, with the same value
-    for the `instance` argument.
+    """We wrap both the original __init__ and the __component_init__ in this descriptor.
+    If we would simply store e.g. `__original__init` on every component, we would run
+    into problems with resolution of calls to `super().__init__()`, since they would
+    trigger `__component_init__` on the parent class again, with the same value for the
+    `instance` argument.
 
     By using a descriptor, we can effectively create a different `__component_init__`
     for every class, and thus make sure that `super().__init__()` refers to the correct
@@ -112,7 +111,8 @@ class ComponentInit:
 
     @staticmethod
     def __component_init__(instance, **kwargs):
-        """Accepts keyword-arguments corresponding to fields defined on the component."""
+        """Accepts keyword-arguments corresponding to fields defined on the
+        component."""
 
         # Use the `kwargs` to set field values.
         for name, value in kwargs.items():
@@ -154,9 +154,11 @@ class ComponentInit:
         ) | set(kwargs)
 
     def __get__(self, instance, type=None):
-        """`instance` is the instance on which `__init__` is called. If the instance
-        has not yet been configured, we defer to `__component_init__`. If it has been
-        configured, we defer to `self.original_init` instead to execute the user's code.
+        """`instance` is the instance on which `__init__` is called.
+
+        If the instance has not yet been configured, we defer to `__component_init__`.
+        If it has been configured, we defer to `self.original_init` instead to execute
+        the user's code.
         """
         if instance is None:
             # This happens when we call `__init__` on the class, e.g. `A.__init__`.
