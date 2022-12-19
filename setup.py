@@ -29,7 +29,7 @@ setup(
         "tensorflow_gpu": ["tensorflow-gpu>=1.14.0"],
         "test": [
             "black==22.8.0",
-            "docformatter==1.5.0",
+            "docformatter==1.5.1",
             "flake8==5.0.4",
             "isort==5.10.1",
             "pytest==7.0.1",
