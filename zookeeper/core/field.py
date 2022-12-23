@@ -158,8 +158,9 @@ class Field(Generic[C, F]):
                 f"{repr(instance)}."
             )
 
-        if not inspect.isfunction(self._default):
-            return self._default
+        default = self._default
+        if not inspect.isfunction(default):
+            return default
 
         params = inspect.signature(self._default).parameters
         if len(params) == 0:
