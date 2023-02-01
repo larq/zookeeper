@@ -17,7 +17,7 @@ setup(
     url="https://github.com/larq/zookeeper",
     packages=find_packages(),
     license="Apache 2.0",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     install_requires=[
         "click>=7.0",
         "tensorflow-datasets>=1.3.0",
@@ -45,7 +45,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Topic :: Scientific/Engineering",
