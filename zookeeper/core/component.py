@@ -524,8 +524,9 @@ def configure_component_instance(
     # Set the correct value for each field.
     for field in instance.__component_fields__.values():
         full_name = f"{instance.__component_name__}.{field.name}"
+        field_type = field.type
         field_type_name = (
-            field.type.__name__ if inspect.isclass(field.type) else str(field.type)
+            field.type.__name__ if inspect.isclass(field_type) else str(field.type)
         )
 
         if isinstance(field, ComponentField):
