@@ -23,7 +23,7 @@ jobs:
       - name: Run Flake8
         run: flake8
       - name: Black code style
-        run: black --check --target-version py36 .
+        run: black --check --target-version py39 .
       - name: Docstring formatting
         run: docformatter -c -r . --wrap-summaries 88 --wrap-descriptions 88
       - name: Check import order with isort
