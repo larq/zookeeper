@@ -28,7 +28,7 @@ setup(
         "tensorflow": ["tensorflow>=1.14.0"],
         "tensorflow_gpu": ["tensorflow-gpu>=1.14.0"],
         "test": [
-            "black==23.1.0",
+            "black==23.7.0",
             "docformatter==1.5.1",
             "flake8==5.0.*,<6.0.0",
             "isort==5.11.*,<5.12.0",
