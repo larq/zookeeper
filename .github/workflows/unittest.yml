@@ -14,31 +14,22 @@ jobs:
         include:
           - tf-version: 2.4.4
             python-version: 3.8
-            protobuf-version: 3.19.6
           - tf-version: 2.5.3
             python-version: 3.9
-            protobuf-version: 3.19.6
           - tf-version: 2.6.5
             python-version: 3.9
-            protobuf-version: 3.19.6
           - tf-version: 2.7.4
             python-version: 3.9
-            protobuf-version: 3.19.6
           - tf-version: 2.8.4
             python-version: "3.10"
-            protobuf-version: 3.19.6
           - tf-version: 2.9.3
             python-version: "3.10"
-            protobuf-version: 3.19.6
           - tf-version: 2.10.1
             python-version: "3.10"
-            protobuf-version: 3.19.6
           - tf-version: 2.11.1
             python-version: "3.10"
-            protobuf-version: 3.19.6
           - tf-version: 2.12.0
             python-version: "3.10"
-            protobuf-version: 3.20.3
 
     steps:
       - uses: actions/checkout@v3
@@ -51,7 +42,6 @@ jobs:
           pip install tensorflow-cpu==${{matrix.tf-version}} || pip install tensorflow==${{matrix.tf-version}}
           pip install larq
           pip install -e .[test]
-          pip install protobuf==${{matrix.protobuf-version}}
       - name: Test with pytest
         run: pytest . -vv --cov=zookeeper --cov-report=xml --cov-config=.coveragerc
       - name: Test example script # Test that the model successfully compiles.
