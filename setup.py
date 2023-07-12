@@ -21,7 +21,7 @@ setup(
     install_requires=[
         "click>=7.0",
         "tensorflow-datasets>=1.3.0,<v4.9.0",
-        "typeguard>=2.5.1,<3.0.0",
+        "typeguard>=2.5.1,<5.0.0",
         "protobuf<3.20",  # for tensorflow-datasets
         "importlib-metadata ~= 2.0 ; python_version<'3.8'",
     ],
