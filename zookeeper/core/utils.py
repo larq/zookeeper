@@ -1,5 +1,6 @@
 import inspect
 import re
+import threading
 from ast import literal_eval
 from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
@@ -14,6 +15,28 @@ class Missing:
 
 
 missing = Missing()
+
+# Will be set to True if and only if zookeeper is currently in the process of
+# configuring a component. Local to this thread only.
+thread_local = threading.local()
+thread_local._CONFIGURATION_MODE = False
+
+
+def in_configuration_mode():
+    return thread_local._CONFIGURATION_MODE
+
+
+class configuration_mode:
+    def __enter__(self):
+        # It may already be True, if we're in a nested context.
+        self.prev_val = thread_local._CONFIGURATION_MODE
+        # But set it to True either way
+        thread_local._CONFIGURATION_MODE = True
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        # And then set back to the original value.
+        thread_local._CONFIGURATION_MODE = self.prev_val
 
 
 class ConfigurationError(Exception):

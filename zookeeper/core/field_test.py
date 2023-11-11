@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import pytest
 
-from zookeeper.core.component import component
+from zookeeper.core.component import component, configure
 from zookeeper.core.field import ComponentField, Field
 from zookeeper.core.partial_component import PartialComponent
 from zookeeper.core.utils import ConfigurationError
@@ -181,6 +181,8 @@ def test_component_field_partial_component_default():
     assert A.foo.has_default
     default_value = A.foo.get_default(A())
     assert isinstance(default_value, ConcreteComponent)
+
+    configure(default_value, {})
     assert default_value.a == 5
 
 
@@ -194,6 +196,7 @@ def test_component_field_kwargs():
     assert A.foo.has_default
     default_value = A.foo.get_default(A())
     assert isinstance(default_value, ConcreteComponent)
+    configure(default_value, {})
     assert default_value.a == 5
 
 
