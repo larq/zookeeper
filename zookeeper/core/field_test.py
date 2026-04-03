@@ -106,7 +106,7 @@ def test_unregistered_field():
     with pytest.raises(
         ValueError, match="This field has not been registered to a component"
     ):
-        field.has_default
+        _ = field.has_default
 
     with pytest.raises(
         ValueError, match="This field has not been registered to a component"

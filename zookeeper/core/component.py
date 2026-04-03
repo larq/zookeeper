@@ -563,9 +563,9 @@ def configure_component_instance(
                 conf_field_value.__component_parent__ = instance
 
             # Set the value on the instance.
-            instance.__component_configured_field_values__[
-                field.name
-            ] = conf_field_value
+            instance.__component_configured_field_values__[field.name] = (
+                conf_field_value
+            )
 
         # If there's a value in scope, we don't need to do anything.
         elif field.name in instance.__component_fields_with_values_in_scope__:
@@ -593,9 +593,9 @@ def configure_component_instance(
             conf_field_value.__component_parent__ = instance
 
             # Set the value on the instance.
-            instance.__component_configured_field_values__[
-                field.name
-            ] = conf_field_value
+            instance.__component_configured_field_values__[field.name] = (
+                conf_field_value
+            )
 
         # If we are running interactively, prompt for a value.
         elif interactive:
@@ -617,9 +617,9 @@ def configure_component_instance(
                 conf_field_value = utils.prompt_for_value(full_name, field.type)
 
             # Set the value on the instance.
-            instance.__component_configured_field_values__[
-                field.name
-            ] = conf_field_value
+            instance.__component_configured_field_values__[field.name] = (
+                conf_field_value
+            )
 
         # Otherwise, raise an appropriate error.
         else:

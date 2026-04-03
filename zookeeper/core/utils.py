@@ -157,8 +157,8 @@ def parse_value_from_string(string: str) -> Any:
     except (ValueError, SyntaxError):
         # Parse as string if above raises a ValueError or SyntaxError.
         value = str(string)
-    except Exception:
-        raise ValueError(f"Could not parse '{string}'.")
+    except Exception as e:
+        raise ValueError(f"Could not parse '{string}'.") from e
     return value
 
 
