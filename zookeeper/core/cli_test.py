@@ -21,7 +21,7 @@ def test_task_runner():
         def run(self):
             print(self.a, self.b, self.c)
 
-    yield testing.CliRunner(mix_stderr=False)
+    yield testing.CliRunner()
 
     # Clear existing commands.
     cli.commands = dict()
@@ -62,7 +62,7 @@ def test_param_key_valid_characters():
         def run(self):
             print(self.a, self.child.x_Y_z)
 
-    runner = testing.CliRunner(mix_stderr=False)
+    runner = testing.CliRunner()
     result = runner.invoke(cli, ["ParentTask", "a=5", "child.x_Y_z=1.0"])
     assert result.exit_code == 0
 
@@ -127,7 +127,7 @@ def test_component_and_factory_override():
         def run(self):
             print(self.base.name)
 
-    runner = testing.CliRunner(mix_stderr=False)
+    runner = testing.CliRunner()
 
     # Errors with no provided `base` value.
     result = runner.invoke(cli, ["test_task"])
