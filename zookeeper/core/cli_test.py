@@ -62,6 +62,8 @@ def test_param_key_valid_characters():
     result = runner.invoke(cli, ["ParentTask", "a=5", "child.x_Y_z=1.0"])
     assert result.exit_code == 0
 
+    cli.commands = dict()
+
 
 def test_param_key_invalid_characters(test_task_runner):
     # Keys with invalid characters such as '-' or '@' should not be accepted.

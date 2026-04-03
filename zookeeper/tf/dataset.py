@@ -200,7 +200,7 @@ class MultiTFDSDataset(Dataset):
         )
 
     def load(self, splits, decoders, shuffle) -> tf.data.Dataset:
-        result = None
+        result: tf.data.Dataset | None = None
         for name, split in splits.items():
             try:
                 dataset = tfds.load(
@@ -220,6 +220,7 @@ class MultiTFDSDataset(Dataset):
                     )
                 raise e from None
             result = result.concatenate(dataset) if result is not None else dataset
+        assert result is not None, "splits must not be empty"
         return result
 
     def train(self, decoders=None) -> Tuple[tf.data.Dataset, int]:
