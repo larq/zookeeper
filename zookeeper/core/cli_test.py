@@ -10,6 +10,8 @@ from zookeeper.core.task import task
 
 @pytest.fixture
 def test_task_runner():
+    cli.commands = dict()
+
     @task
     class TestTask:
         a: int = Field()
@@ -43,6 +45,8 @@ def test_pass_param_values(test_task_runner):
 
 
 def test_param_key_valid_characters():
+    cli.commands = dict()
+
     # We should be able to pass keys with underscores and full stops and
     # capitals.
 
@@ -100,6 +104,8 @@ def test_boolean_flag_syntax(test_task_runner):
 
 
 def test_component_and_factory_override():
+    cli.commands = dict()
+
     class Base:
         name = "abstract_base"
 
