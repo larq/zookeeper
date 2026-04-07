@@ -479,7 +479,7 @@ def test_type_check(ExampleComponentClass):
         TypeError,
         match="Field 'a' of component 'x' is annotated with type '<class 'int'>', which is not satisfied by value 4.5.",
     ):
-        instance.a
+        _ = instance.a
 
 
 def test_error_if_field_overwritten_in_subclass():
@@ -529,14 +529,14 @@ def test_component_field_factory_type_check(capsys):
         base: Tuple[float, float, float] = ComponentField(F3)
 
     # These should succeed.
-    A1().base
-    A2().base
+    _ = A1().base
+    _ = A2().base
 
     # Do this here to drop any already captured output.
     capsys.readouterr()
 
     # This should succeed, but without a type-check (should print a warning)
-    A3().base
+    _ = A3().base
     captured = capsys.readouterr()
     assert (
         captured.err

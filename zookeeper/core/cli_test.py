@@ -10,6 +10,8 @@ from zookeeper.core.task import task
 
 @pytest.fixture
 def test_task_runner():
+    cli.commands = dict()
+
     @task
     class TestTask:
         a: int = Field()
@@ -19,7 +21,7 @@ def test_task_runner():
         def run(self):
             print(self.a, self.b, self.c)
 
-    yield testing.CliRunner(mix_stderr=False)
+    yield testing.CliRunner()
 
     # Clear existing commands.
     cli.commands = dict()
@@ -43,6 +45,8 @@ def test_pass_param_values(test_task_runner):
 
 
 def test_param_key_valid_characters():
+    cli.commands = dict()
+
     # We should be able to pass keys with underscores and full stops and
     # capitals.
 
@@ -58,9 +62,11 @@ def test_param_key_valid_characters():
         def run(self):
             print(self.a, self.child.x_Y_z)
 
-    runner = testing.CliRunner(mix_stderr=False)
+    runner = testing.CliRunner()
     result = runner.invoke(cli, ["ParentTask", "a=5", "child.x_Y_z=1.0"])
     assert result.exit_code == 0
+
+    cli.commands = dict()
 
 
 def test_param_key_invalid_characters(test_task_runner):
@@ -98,6 +104,8 @@ def test_boolean_flag_syntax(test_task_runner):
 
 
 def test_component_and_factory_override():
+    cli.commands = dict()
+
     class Base:
         name = "abstract_base"
 
@@ -119,7 +127,7 @@ def test_component_and_factory_override():
         def run(self):
             print(self.base.name)
 
-    runner = testing.CliRunner(mix_stderr=False)
+    runner = testing.CliRunner()
 
     # Errors with no provided `base` value.
     result = runner.invoke(cli, ["test_task"])

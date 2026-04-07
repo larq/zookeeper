@@ -93,7 +93,7 @@ class PartialComponent(Generic[_ComponentType]):
         )
 
     def __call__(self, **kwargs) -> _ComponentType:
-        for name, value in kwargs.items():
+        for name, _value in kwargs.items():
             if name not in self._component_class.__component_fields__:
                 raise TypeError(
                     f"Keyword argument '{name}' passed to `PartialComponent` does "

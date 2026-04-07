@@ -1,10 +1,12 @@
 import pytest
 
+from zookeeper.core.cli import cli
 from zookeeper.core.task import task
 
 
 def test_with_argumentless_run():
     """Tasks with argument-less `run` should not cause errors."""
+    cli.commands = dict()
 
     @task
     class T1:
@@ -22,6 +24,8 @@ def test_with_argumentless_run():
         @staticmethod
         def run():
             pass
+
+    cli.commands = dict()
 
 
 def test_no_run_error():
