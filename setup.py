@@ -31,7 +31,7 @@ setup(
             "pytype==2024.10.11",
             "pytest==9.0.2",
             "pytest-cov==7.1.0",
-            "ruff==0.11.4",
+            "ruff==0.15.9",
         ],
     },
     classifiers=[
