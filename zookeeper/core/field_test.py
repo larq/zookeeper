@@ -42,7 +42,7 @@ def test_immutable_default():
         foobar: Optional[int] = Field(None)
 
     for field_name, expected_default in zip(
-        ["foo", "bar", "baz", "foobar"], [5, 1.2, False, None]
+        ["foo", "bar", "baz", "foobar"], [5, 1.2, False, None], strict=True
     ):
         instance = A()
         field = getattr(A, field_name)
