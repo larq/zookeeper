@@ -22,7 +22,7 @@ setup(
         "click>=7.0",
         "tensorflow-datasets>=1.3.0,<v4.9.0",
         "typeguard>=2.5.1,<3.0.0",
-        "protobuf<3.21",  # for tensorflow-datasets
+        "protobuf<7.35",  # for tensorflow-datasets
     ],
     extras_require={
         "tensorflow": ["tensorflow>=2.8.4"],
