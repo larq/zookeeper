@@ -96,11 +96,8 @@ def type_check(value, expected_type) -> bool:
             )
             return True
     try:
-        # typeguard.check_type requires a name as the first argument for their
-        # error message, but we want to catch their error so we can pass an
-        # empty string.
-        typeguard.check_type("", value, expected_type)
-    except TypeError:
+        typeguard.check_type(value, expected_type)
+    except typeguard.TypeCheckError:
         return False
     return True
 
