@@ -1,3 +1,7 @@
+> [!WARNING]
+> **This repository is no longer maintained and has been archived; it is kept available in read-only mode.**
+> For information about products by the creators of this repository, visit [plumerai.com](https://plumerai.com).
+
 # Zookeeper
 
 [![GitHub Actions](https://github.com/larq/zookeeper/workflows/Unittest/badge.svg)](https://github.com/larq/zookeeper/actions?workflow=Unittest) [![Codecov](https://img.shields.io/codecov/c/github/larq/zookeeper)](https://codecov.io/github/larq/zookeeper?branch=main) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/zookeeper.svg)](https://pypi.org/project/zookeeper/) [![PyPI](https://img.shields.io/pypi/v/zookeeper.svg)](https://pypi.org/project/zookeeper/) [![PyPI - License](https://img.shields.io/pypi/l/zookeeper.svg)](https://github.com/plumerai/zookeeper/blob/main/LICENSE) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
